@@ -159,6 +159,29 @@ pre.sum{white-space:pre-wrap;font:13px/1.6 var(--sans);background:rgba(0,0,0,.3)
 .m.u{align-self:flex-end;background:linear-gradient(135deg,#2bc4e8,#7a6bff);color:#fff;border-bottom-right-radius:4px}
 .m.a{align-self:flex-start;background:var(--glass2);border-bottom-left-radius:4px}
 #chat form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}
+.rep h3{font-size:19px;font-weight:700;word-break:break-all}
+.rep-h{display:flex;gap:12px;align-items:flex-start;justify-content:space-between}
+.rep .tag{color:var(--muted);margin-top:3px}
+.rep .what{font-size:15px;line-height:1.65;margin:4px 0 12px;color:var(--text)}
+.rep h4{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:22px 0 9px;font-weight:500}
+.stk{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.lbar{display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--glass2);margin-top:6px}.lbar span{display:block;height:100%}
+.llg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}.llg .dot{margin-right:5px}
+.health{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:700px){.health{grid-template-columns:1fr}}
+.hrow{display:grid;grid-template-columns:20px auto 1fr;gap:8px;align-items:baseline;background:var(--glass);border:1px solid var(--line);border-radius:11px;padding:9px 12px;font-size:13px}
+.hrow i{font-style:normal;font-weight:700;color:var(--dim)}.hrow b{font-weight:600}.hrow span{color:var(--muted);font-size:12.5px}
+.hrow.ok i{color:var(--green)}.hrow.warn i{color:var(--amber)}.hrow.warn{border-color:rgba(255,193,90,.28)}
+.bul{margin:0;padding-left:18px;color:var(--text);font-size:14px;line-height:1.7}.bul.warn li::marker{color:var(--amber)}
+.rep .note{font-size:12.5px;margin-top:8px}
+.loadingp{text-align:center;color:var(--muted);font-family:var(--mono);font-size:13px;padding:30px}
+.tryp{max-width:720px;margin:34px auto 0;text-align:left}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:720px;margin:26px auto 0}
+.steps div{background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center}
+.steps b{grid-row:span 2;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,rgba(56,225,255,.25),rgba(139,123,255,.25));font-family:var(--mono);font-size:13px}
+.steps span{font-weight:600;font-size:14px}.steps small{color:var(--muted);font-size:12px;line-height:1.4}
+@media(max-width:700px){.steps{grid-template-columns:1fr}}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:80;background:rgba(8,12,22,.96);border:1px solid var(--amber);color:var(--amber);padding:11px 18px;border-radius:12px;max-width:min(560px,92vw);font-size:13.5px;box-shadow:0 20px 50px -15px #000}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation-duration:.01ms!important}}
 .rf{display:flex;align-items:center;background:rgba(0,0,0,.35);border:1px solid var(--line2);border-radius:11px;transition:.15s}
 .rf:focus-within{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(56,225,255,.14)}
@@ -172,12 +195,13 @@ pre.sum{white-space:pre-wrap;font:13px/1.6 var(--sans);background:rgba(0,0,0,.3)
 </head>
 <body>
 <header>
-  <div class="logo" onclick="go('home')">
+  <div class="logo" onclick="ME?go('home'):landing()">
     <svg viewBox="0 0 32 32" fill="none"><path d="M16 2l11 4v9c0 7-4.6 12.2-11 15C9.6 27.200 5 22 5 15V6l11-4z" stroke="url(#g)" stroke-width="1.8"/><circle cx="16" cy="11" r="2.2" fill="#38e1ff"/><circle cx="11" cy="19" r="2" fill="#8b7bff"/><circle cx="21" cy="19" r="2" fill="#3dffb0"/><path d="M16 13l-4 5M16 13l4 5M13 19h6" stroke="#9fb0d4" stroke-width="1"/><defs><linearGradient id="g" x1="5" y1="2" x2="27" y2="30"><stop stop-color="#38e1ff"/><stop offset="1" stop-color="#8b7bff"/></linearGradient></defs></svg>
     <b>SpecGuard</b>
   </div>
   <nav id="nav" class="hide"><button data-v="home" onclick="go('home')">Home</button><button data-v="explore" onclick="go('explore')">Explore</button><button data-v="read" onclick="go('read')">Read</button><button data-v="build" onclick="go('build')">Build</button></nav>
   <div class="sp"></div>
+  <a class="btn primary sm hide" id="signin" href="/auth/github">Sign in with GitHub</a>
   <div class="chip hide" id="userChip"><img id="avatar" alt=""><span id="uname"></span><button onclick="logout()">Sign out</button></div>
 </header>
 <main id="app"></main>
@@ -208,21 +232,70 @@ const ICON={build:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 
 async function init(){
   try{ME=await api('/api/me')}catch(e){ME=null}
-  ['#userChip','#nav','#chatBtn'].forEach(s=>$(s).classList.toggle('hide',!ME));
-  if(ME){$('#avatar').src=ME.avatar;$('#uname').textContent=ME.login;go((location.hash||'#home').slice(1).split(':')[0])}else login();
+  ['#userChip','#nav','#chatBtn'].forEach(x=>$(x).classList.toggle('hide',!ME));
+  $('#signin').classList.toggle('hide',!!ME);
+  const C=await api('/auth/config').catch(()=>({}));$('#signin').href=C.github?'/auth/github':(C.local?'/auth/local':'/auth/github');
+  const [v,...rest]=(location.hash||'').slice(1).split(':');
+  if(ME){$('#avatar').src=ME.avatar;$('#uname').textContent=ME.login}
+  if(v==='run'&&rest[0])return openRun(rest[0]);
+  if(v==='try'&&rest.length){await landing();fillT('tin',rest.join(':'));return analyze('tin','tout')}
+  if(ME)go(v||'home');else landing();
 }
-async function login(msg){
-  const c=await api('/auth/config');
-  app.innerHTML=`<div class="hero"><div class="eyebrow">Proof-driven development</div>
+const login=msg=>landing(msg);
+async function landing(msg){
+  if(ES){ES.close();ES=null}app.classList.remove('wide');
+  const c=await api('/auth/config').catch(()=>({}));
+  app.innerHTML=`<div class="hero" style="padding-top:44px"><div class="eyebrow">Proof-driven development</div>
   <h1>Don't review AI code.<br><span class="grad">Review its proof.</span></h1>
-  <p>SpecGuard turns a feature request into cited spec clauses, writes the tests first, implements until they pass, and reviews any PR by running tests — never by guessing.</p>
-  ${msg?`<div class="notice" style="max-width:520px;margin:0 auto 22px">${esc(msg)}</div>`:''}${c.github?`<a class="btn primary cta" href="/auth/github">Continue with GitHub</a>`:`<div class="notice" style="max-width:520px;margin:0 auto">GitHub OAuth isn't configured on this server yet. Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.</div>`}
-  ${c.local?`<p style="margin-top:20px;font-size:13px"><a href="/auth/local" class="muted">Local dev sign-in</a></p>`:''}</div>`;
+  <p>SpecGuard writes the tests first, implements until they pass, and reviews any PR by running tests — never by guessing.</p>
+  ${msg?`<div class="notice" style="max-width:560px;margin:0 auto 22px">${esc(msg)}</div>`:''}</div>
+  <div class="panel tryp"><label style="margin-top:0">Try it now — no sign-in needed</label>${targetField('tin','tout')}
+   <div class="row" style="margin-top:14px"><button class="btn primary" onclick="analyze('tin','tout')">Analyze</button><span class="muted" style="font-size:12.5px">Paste a public repo for a report, or an open PR to review it. Reviews are read-only.</span></div></div>
+  <div id="tout" style="max-width:720px;margin:18px auto 0"></div>
+  <div class="steps"><div><b>1</b><span>Spec clauses</span><small>Verbatim quotes from the repo's own standards</small></div><div><b>2</b><span>Tests first</span><small>Shown failing, then flipped to passing</small></div><div><b>3</b><span>Proof in the PR</span><small>Every finding backed by a failing test</small></div></div>
+  <p class="muted" style="text-align:center;margin-top:34px;font-size:13.5px">Sign in with GitHub to build features, explore your repos as a map, review private PRs and post reviews.
+   <a class="btn sm" style="margin-left:8px;text-decoration:none" href="${c.github?'/auth/github':(c.local?'/auth/local':'/auth/github')}">${c.github||!c.local?'Sign in with GitHub':'Local dev sign-in'}</a></p>`;
 }
-const normRepo=v=>{v=(v||'').trim().replace(/^https?:\/\/(www\.)?github\.com\//i,'').replace(/^github\.com\//i,'').replace(/\.git$/i,'').replace(/[?#].*$/,'').replace(/\/+$/,'');const m=v.match(/^([\w.-]+)\/([\w.-]+)/);return m?m[1]+'/'+m[2]:(/^[\w.-]+$/.test(v)&&v&&ME?ME.login+'/'+v:'')};
+const parseTarget=v=>{v=(v||'').trim().replace(/^https?:\/\/(www\.)?github\.com\//i,'').replace(/^github\.com\//i,'').replace(/[?#].*$/,'').replace(/\/+$/,'');
+  let m=v.match(/^([\w.-]+)\/([\w.-]+?)(?:\.git)?\/pull\/(\d+)/)||v.match(/^([\w.-]+)\/([\w.-]+?)#(\d+)$/);
+  if(m)return{repo:m[1]+'/'+m[2],pr:+m[3]};
+  m=v.match(/^([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:\/.*)?$/);
+  if(m)return{repo:m[1]+'/'+m[2]};
+  return /^[\w.-]+$/.test(v)&&v&&ME?{repo:ME.login+'/'+v}:{}};
+const normRepo=v=>parseTarget(v).repo||'';
 const EXAMPLES=['open-telemetry/opentelemetry-python','Naveenaduri/tinyjwt'];
-const repoField=(id,val,list)=>`<div class="rf"><span>https://github.com/</span><input id="${id}" list="${list}" placeholder="owner/repo" value="${esc(val)}" autocomplete="off" spellcheck="false" onpaste="setTimeout(()=>{this.value=normRepo(this.value)||this.value},0)"></div>
-  <div class="try">Try <button type="button" onclick="document.getElementById('${id}').value='${EXAMPLES[0]}'">${EXAMPLES[0]}</button><button type="button" onclick="document.getElementById('${id}').value='${EXAMPLES[1]}'">${EXAMPLES[1]}</button></div><div class="ferr" id="${id}Err"></div>`;
+const fillT=(id,v)=>{const i=document.getElementById(id);i.value=v;i.focus()};
+const toast=m=>{const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),5200)};
+const pasteFix=`setTimeout(()=>{const t=parseTarget(this.value);if(t.repo)this.value=t.repo+(t.pr?'/pull/'+t.pr:'')},0)`;
+const repoField=(id,val,list)=>`<div class="rf"><span>https://github.com/</span><input id="${id}" list="${list}" placeholder="owner/repo" value="${esc(val)}" autocomplete="off" spellcheck="false" onpaste="${pasteFix}"></div>
+  <div class="try">Try <button type="button" onclick="fillT('${id}','${EXAMPLES[1]}')">${EXAMPLES[1]}</button></div><div class="ferr" id="${id}Err"></div>`;
+const targetField=(id,out)=>`<div class="rf"><span>https://github.com/</span><input id="${id}" placeholder="owner/repo   or   owner/repo/pull/123" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')analyze('${id}','${out}')" onpaste="${pasteFix}"></div>
+  <div class="try">Try <button type="button" onclick="fillT('${id}','Naveenaduri/tinyjwt/pull/2')"><b style="color:var(--green)">review a PR</b> · Naveenaduri/tinyjwt/pull/2</button><button type="button" onclick="fillT('${id}','${EXAMPLES[0]}')"><b style="color:var(--cyan)">repo report</b> · ${EXAMPLES[0]}</button></div><div class="ferr" id="${id}Err"></div>`;
+async function analyze(inId,outId){
+  const t=parseTarget($('#'+inId).value),err=$('#'+inId+'Err'),o=$('#'+outId);err.textContent='';
+  if(!t.repo){err.textContent='Enter owner/repo, or an open PR like owner/repo/pull/123.';return}
+  if(t.pr){
+    o.innerHTML=`<div class="panel loadingp"><div class="spin"></div>Checking PR #${t.pr}…</div>`;
+    try{const c=await api('/api/pr/check?url='+encodeURIComponent(t.repo+'#'+t.pr));
+      o.innerHTML=`<div class="panel"><b>#${c.number} ${esc(c.title)}</b><div class="muted">${esc(c.repo)} · by ${esc(c.author)} · ${c.files} file(s) changed — starting the review…</div></div>`;
+      const r=await post('/api/review',{repo:c.repo,pr:c.number,comment:false});openRun(r.run_id)}
+    catch(e){o.innerHTML='';err.textContent=e.message}
+    return}
+  o.innerHTML=`<div class="panel loadingp"><div class="spin"></div>Reading ${esc(t.repo)}…</div>`;setCtx(t.repo);
+  try{const h=await api('/api/repo/'+t.repo);o.innerHTML=`<div class="panel">${reportHtml(h)}</div>`}catch(e){o.innerHTML='';err.textContent=e.message}
+}
+function reportHtml(h){
+  const r=h.report||{},L=h.lang_pct||[],li=a=>(a||[]).map(x=>`<li>${esc(x)}</li>`).join('');
+  const bar=L.length?`<div class="lbar">${L.map(l=>`<span title="${esc(l.name)} ${l.pct}%" style="width:${l.pct}%;background:${langColor(l.name)}"></span>`).join('')}</div><div class="llg">${L.map(l=>`<span><i class="dot" style="background:${langColor(l.name)}"></i>${esc(l.name)} ${l.pct}%</span>`).join('')}</div>`:'';
+  return `<div class="rep"><div class="rep-h"><div><h3>${esc(h.repo)}</h3><div class="tag">${esc(r.tagline||h.description||'')}</div></div><a class="btn sm" href="${esc(h.html_url)}" target="_blank" rel="noopener">GitHub ↗</a></div>
+  <div class="row" style="margin:12px 0"><span class="pill ${h.access.write?'ok':''}">${h.access.write?'you can write':'read only'}</span><span class="pill">★ ${h.stars}</span><span class="pill ${h.private?'no':''}">${h.private?'private':'public'}</span></div>
+  ${r.what?`<p class="what">${esc(r.what)}</p>`:''}${(r.stack||[]).length?`<div class="stk">${r.stack.map(x=>`<span class="pill">${esc(x)}</span>`).join('')}</div>`:''}${bar}
+  <h4>Health</h4><div class="health">${h.health.map(x=>`<div class="hrow ${x.ok===true?'ok':x.ok===false?'warn':''}"><i>${x.ok===true?'✓':x.ok===false?'!':'•'}</i><b>${esc(x.label)}</b><span>${esc(x.detail)}</span></div>`).join('')}</div>
+  ${(r.notable||[]).length?`<h4>Worth knowing</h4><ul class="bul">${li(r.notable)}</ul>`:''}${(r.watch||[]).length?`<h4>Watch out</h4><ul class="bul warn">${li(r.watch)}</ul>`:''}
+  <h4>Recent commits</h4>${h.commits.slice(0,4).map(c=>`<div class="crow"><span class="mono">${esc(c.sha)}</span><span>${esc(c.msg)}</span></div>`).join('')||'<div class="muted">none</div>'}
+  <h4>Open pull requests</h4>${h.prs.map(p=>`<div class="rel" style="cursor:default"><b>#${p.number}</b><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.title)}</span><button class="btn sm" style="margin-left:auto" onclick='startReview(${JSON.stringify(h.repo)},${p.number})' ${h.has_specs?'':'disabled'}>Review</button></div>`).join('')||'<div class="muted" style="font-size:13px">none open</div>'}
+  ${h.prs.length&&!h.has_specs?'<div class="muted note">Review is disabled: this repo has no specs/ folder for SpecGuard to check code against.</div>':''}</div>`;
+}
 async function logout(){await post('/auth/logout',{});location.reload()}
 function go(v,arg){
   if(ES){ES.close();ES=null} if(GR){GR.stop();GR=null}
@@ -296,13 +369,8 @@ function openDrawer(r){
 }
 function closeDrawer(){$('#drawer').classList.remove('open');if(GR)GR.select(null)}
 async function readInto(full,elSel='#detail'){
-  const el=$(elSel);el.innerHTML='<div class="muted mono" style="font-size:12px">Reading repo…</div>';
-  try{const h=await api('/api/repo/'+full);
-  el.innerHTML=`<div class="row" style="margin-bottom:10px"><span class="pill ${h.has_specs?'ok':'no'}">${h.has_specs?'specs/ found':'no specs/'}</span><span class="pill ${h.has_tests?'ok':'no'}">${h.has_tests?'tests found':'no tests'}</span></div>
-  <pre class="sum">${esc(h.summary)}</pre>
-  <div class="sec">Recent commits</div>${h.commits.slice(0,4).map(c=>`<div class="crow"><span class="mono">${esc(c.sha)}</span><span>${esc(c.msg)}</span></div>`).join('')}
-  <div class="sec">Open PRs (${h.prs.length})</div>${h.prs.map(p=>`<div class="rel" style="cursor:default"><b>#${p.number}</b><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.title)}</span><button class="btn sm" style="margin-left:auto" onclick='startReview(${JSON.stringify(full)},${p.number})' ${h.has_specs?'':'disabled'}>Review</button></div>`).join('')||'<div class="muted" style="font-size:13px">none</div>'}`}
-  catch(e){el.innerHTML=`<div class="notice">${esc(e.message)}</div>`}
+  const el=$(elSel);el.innerHTML='<div class="loadingp"><div class="spin"></div>Reading repo…</div>';
+  try{el.innerHTML=reportHtml(await api('/api/repo/'+full))}catch(e){el.innerHTML=`<div class="notice">${esc(e.message)}</div>`}
 }
 
 /* ---------- the graph engine ---------- */
@@ -390,10 +458,10 @@ function makeGraph(cv,G){
 
 /* ---------- read a repo ---------- */
 function readView(){
-  app.innerHTML=`<h2>Read a repo</h2><p class="sub">Highlights, health, and one-click review of any open PR.</p><div class="panel" style="max-width:680px"><label>GitHub repository — public or one you can access</label>${repoField('rin',SELECTED||'','rl')}<datalist id="rl"></datalist><div class="row" style="margin-top:16px"><button class="btn primary" onclick="doRead()">Read it</button></div></div><div class="panel hide" id="rout" style="margin-top:18px;max-width:680px"></div>`;
-  loadGraph().then(g=>$('#rl').innerHTML=g.repos.map(r=>`<option value="${esc(r.full_name)}">`).join('')).catch(()=>{});
+  app.innerHTML=`<h2>Read a repo</h2><p class="sub">Paste a GitHub repo for a readable report — or an open PR link to review it.</p>
+  <div class="panel" style="max-width:720px"><label style="margin-top:0">GitHub repository or pull request</label>${targetField('rin','rout')}
+  <div class="row" style="margin-top:14px"><button class="btn primary" onclick="analyze('rin','rout')">Analyze</button></div></div><div id="rout" style="margin-top:18px;max-width:720px"></div>`;
 }
-async function doRead(){const full=normRepo($('#rin').value);if(!full){$('#rinErr').textContent='Enter it as owner/repo — for example open-telemetry/opentelemetry-python';return}$('#rinErr').textContent='';$('#rin').value=full;setCtx(full);const o=$('#rout');o.classList.remove('hide');o.innerHTML='<div id="d2"></div>';readInto(full,'#d2')}
 
 /* ---------- build / review runs ---------- */
 function buildView(repo){
@@ -407,7 +475,7 @@ async function startBuild(){
   const repo=normRepo($('#brepo').value),feature=$('#bfeat').value.trim();if(!repo){$('#brepoErr').textContent='Enter it as owner/repo — for example Naveenaduri/tinyjwt';return}$('#brepoErr').textContent='';if(!feature){$('#berr').innerHTML='<div class="notice">Describe the feature you want.</div>';return}
   $('#bgo').disabled=true;try{const r=await post('/api/build',{repo,feature});openRun(r.run_id)}catch(e){$('#berr').innerHTML=`<div class="notice">${esc(e.message)}</div>`;$('#bgo').disabled=false}
 }
-async function startReview(repo,pr){try{const r=await post('/api/review',{repo,pr,comment:false});closeDrawer();openRun(r.run_id)}catch(e){alert(e.message)}}
+async function startReview(repo,pr){try{const c=await api('/api/pr/check?url='+encodeURIComponent(repo+'#'+pr));const r=await post('/api/review',{repo:c.repo,pr:c.number,comment:false});closeDrawer();openRun(r.run_id)}catch(e){toast(e.message)}}
 
 const STAGES={build:[['ticket','Request'],['spec','Spec'],['plan','Plan'],['tests_red','Tests red'],['implement','Implement'],['tests_green','Green'],['inspect','Inspect'],['pr','PR'],['human_review','Review'],['merged','Merged']],
  review:[['received','Received'],['map_clauses','Map clauses'],['generate_tests','Generate'],['run_tests','Run'],['verdict','Verdict'],['comment','Comment']]};
@@ -424,7 +492,7 @@ function rail(e){
   const all=[...document.querySelectorAll('.st2')],idx=all.indexOf(el);all.slice(0,idx).forEach(p=>{if(!p.classList.contains('failed'))p.className='st2 done'});
   el.className='st2 '+({started:'active',progress:'active',done:'done',failed:'failed',waiting_human:'wait'}[e.status]||'active');
 }
-const clauseHtml=c=>`<div class="clause"><span class="lv ${esc((c.level||'').replace(' ',''))}">${esc(c.level)}</span><b>${esc(c.id)}</b> <span class="meta">${esc(c.source)}</span><q>“${esc(c.quote)}”</q><span class="meta">${esc(c.requirement||'')}</span></div>`;
+const clauseHtml=c=>`<div class="clause"><span class="lv ${esc((c.level||'').replace(' ',''))}">${esc(c.level)}</span><b>${esc(c.id)}</b> <span class="meta">${esc(c.source)}</span><q>${esc(c.quote)}</q><span class="meta">${esc(c.requirement||'')}</span></div>`;
 function add(html,cls=''){const f=$('#feed');const d=document.createElement('div');d.className='ev '+cls;d.innerHTML=html;f.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'nearest'});return d}
 function render(e,ctx){
   rail(e);const d=e.data||{};
@@ -440,12 +508,12 @@ function render(e,ctx){
   if(e.stage==='spec'&&e.status==='done'){document.querySelectorAll('.gate[data-g=spec]').forEach(x=>x.remove());return add(`<div class="t">📜 ${esc(e.title)}</div>${(d.clauses||[]).map(clauseHtml).join('')}`)}
   if(e.stage==='tests_red'&&e.status==='done'){
     add(`<div class="t big" style="color:var(--red)">🔴 ${esc(e.title)}</div><div class="d">${esc(e.detail)}</div>`,'red');
-    (d.tests||[]).forEach(t=>{const c=ctx.clauses[t.clause_id]||{};add(`<div class="t" style="color:var(--red)">✘ ${esc(t.clause_id)} <span class="muted mono">${esc((t.name||'').split('::').pop())}</span></div><q class="d" style="display:block">“${esc(c.quote||'')}”</q><div class="out">${esc(t.output_snippet)}</div>`,'red')});return}
+    (d.tests||[]).forEach(t=>{const c=ctx.clauses[t.clause_id]||{};add(`<div class="t" style="color:var(--red)">✘ ${esc(t.clause_id)} <span class="muted mono">${esc((t.name||'').split('::').pop())}</span></div><q class="d" style="display:block">${esc(c.quote||'')}</q><div class="out">${esc(t.output_snippet)}</div>`,'red')});return}
   if(e.stage==='implement'&&d.diff_preview)return add(`<div class="t">🔥 ${esc(e.title)} <span class="muted mono">${esc(e.detail)}</span></div><div class="diff">${d.diff_preview.split('\n').map(l=>`<div class="${l.startsWith('+')&&!l.startsWith('+++')?'p':l.startsWith('-')&&!l.startsWith('---')?'m':''}">${esc(l)}</div>`).join('')}</div>`);
   if(e.stage==='tests_green'&&d.evidence){add(`<div class="t big" style="color:var(--green)">🟢 ${esc(e.title)}</div><div class="d">${esc(e.detail)}</div>`,'green');
     d.evidence.forEach(r=>add(`<div class="t" style="color:var(--green)">✔ ${esc(r.clause_id)} <span class="muted">${esc(r.source)}</span> <span class="muted mono">${esc(r.test)}</span></div><div class="flip"><div class="b">❌ ${esc(r.before)}</div><div>→</div><div class="a">✅ ${esc(r.after)}</div></div>`,'green'));return}
   if(d.violations&&d.violations.length){
-    d.violations.forEach(v=>add(`<h4>VIOLATION PROVEN BY A FAILING TEST</h4><div><span class="lv MUST">SPEC</span><b>${esc(v.clause_id)}</b> <span class="meta muted">${esc(v.source)}</span></div><q>“${esc(v.quote)}”</q>
+    d.violations.forEach(v=>add(`<h4>VIOLATION PROVEN BY A FAILING TEST</h4><div><span class="lv MUST">SPEC</span><b>${esc(v.clause_id)}</b> <span class="meta muted">${esc(v.source)}</span></div><q>${esc(v.quote)}</q>
       <div class="muted mono" style="font-size:12px">failing test · ${esc(v.test_name)}</div><div class="out">${esc(v.output_snippet)}</div>${v.suggested_fix?`<div class="d"><b>Suggested fix:</b> ${esc(v.suggested_fix)}</div>`:''}`,'violation'));return}
   if(e.stage==='inspect'&&e.status==='done')return add(`<div class="t" style="color:var(--green)">🕵️ ${esc(e.title)} <span class="muted">${esc(e.detail)}</span></div>`,'green');
   if(e.stage==='pr'&&e.status==='done'&&d.pr_url)return add(`<div class="t big">🍽️ ${esc(e.title)}</div><div class="d">${esc(e.detail&&!e.detail.startsWith('http')?e.detail:'')}</div><div class="row" style="margin-top:10px"><a class="btn primary" style="text-decoration:none" target="_blank" rel="noopener" href="${esc(d.pr_url)}">Open the PR on GitHub ↗</a></div>`,'green');
@@ -454,6 +522,7 @@ function render(e,ctx){
       <textarea id="revEdit" placeholder="e.g. also validate the issuer (iss) claim"></textarea><div class="row" style="margin-top:12px"><button class="btn good" onclick='gate(${JSON.stringify(ctx.id)},"review","approve",this)'>Approve &amp; merge</button>
       <button class="btn" onclick='gate(${JSON.stringify(ctx.id)},"review","changes",this,"revEdit")'>Request changes</button></div>`,'gate');g.dataset.g='review';return}
   if(e.stage==='human_review'&&e.status==='done'){document.querySelectorAll('.gate[data-g=review]').forEach(x=>x.remove());return add(`<div class="t">💬 ${esc(e.title)} <span class="muted">${esc(e.detail)}</span></div>`,'small')}
+  if(e.stage==='comment'&&d.body&&!d.pr_url&&!ME)return add(`<div class="t">💬 Review ready</div><div class="d">This is a read-only preview. Sign in with GitHub to post a review on the PR.</div><div class="row" style="margin-top:10px"><a class="btn primary" style="text-decoration:none" href="${esc($('#signin').href)}">Sign in with GitHub</a></div>`);
   if(e.stage==='comment'&&d.body&&!d.pr_url)return add(`<div class="t">💬 ${esc(e.title)}</div><div class="d">Nothing is posted to GitHub unless you choose to.</div><div class="row" style="margin-top:10px"><button class="btn primary" onclick='postReview(${JSON.stringify(ctx.id)},this)'>Post review to the PR</button></div>`);
   if(e.stage==='comment'&&d.pr_url)return add(`<div class="t" style="color:var(--green)">✔ ${esc(e.title)}</div><div class="row" style="margin-top:8px"><a class="btn" style="text-decoration:none" target="_blank" rel="noopener" href="${esc(d.pr_url)}">View on GitHub ↗</a></div>`,'green');
   if(e.stage==='merged')return add(`<div class="t big" style="color:var(--green)">🔔 ${esc(e.title)}</div>`,'green');

@@ -11,6 +11,7 @@ import urllib.parse
 from pathlib import Path
 
 import httpx
+from github import GithubException
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
@@ -37,6 +38,45 @@ def user(request: Request) -> dict:
     if not u:
         raise HTTPException(401, "not signed in")
     return u
+
+
+PUBLIC_TOKEN = os.getenv("PUBLIC_READ_TOKEN", "")  # read-only token used for guests (public repos only)
+if not PUBLIC_TOKEN and ALLOW_LOCAL:  # dev convenience: borrow the local gh login so guests aren't capped at 60 req/hour
+    PUBLIC_TOKEN = subprocess.run(["gh", "auth", "token", *(["--user", os.getenv("GITHUB_ORG", "")] if os.getenv("GITHUB_ORG") else [])],
+                                  capture_output=True, text=True).stdout.strip()
+ANON_RUNS: dict = {}  # guest id -> reviews started (free preview quota)
+ANON_LIMIT = 3
+
+
+def viewer(request: Request) -> dict:
+    """Signed-in user, or a guest limited to public repos (read + review, no posting)."""
+    u = SESSIONS.get(request.session.get("sid", ""))
+    if u:
+        return u
+    gid = request.session.get("guest")
+    if not gid:
+        gid = request.session["guest"] = secrets.token_hex(6)
+    return {"login": f"guest-{gid}", "name": "Guest", "avatar": "", "token": PUBLIC_TOKEN, "anon": True}
+
+
+def _missing_msg(v: dict, what: str = "repository", exc=None) -> str:
+    if exc is not None and "rate limit" in str(exc).lower():
+        return "GitHub is rate-limiting requests right now. Please try again in a few minutes."
+    if v.get("anon"):
+        return f"We couldn't open that {what}. It may not exist, or it's private. Sign in with GitHub to open private ones you have access to."
+    return f"Your GitHub account can't open that {what}. It may not exist, or you may not have access to it."
+
+
+def _public_only(repo, v: dict):
+    if v.get("anon") and repo.private:
+        raise HTTPException(403, "That repository is private. Sign in with GitHub to use repositories you can access.")
+
+
+def _has_dir(r, path: str) -> bool:
+    try:
+        return bool(r.get_contents(path))
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def _login(request: Request, token: str, profile: dict):
@@ -149,34 +189,89 @@ def repo_graph(refresh: int = 0, u: dict = Depends(user)):
 
 
 @app.get("/api/repo/{owner}/{name}")
-def repo_highlights(owner: str, name: str, u: dict = Depends(user)):
-    g = gh.client(u["token"])
+def repo_highlights(owner: str, name: str, v: dict = Depends(viewer)):
+    g = gh.client(v["token"])
     full = f"{owner}/{name}"
+    try:
+        r = g.get_repo(full)
+    except GithubException as exc:
+        raise HTTPException(404 if exc.status in (403, 404) else 502, _missing_msg(v, exc=exc)) from exc
+    _public_only(r, v)
     acc = gh.access(g, full)
-    if not acc["read"]:
-        raise HTTPException(403, "your GitHub identity cannot read this repository")
-    r = g.get_repo(full)
-    langs = r.get_languages()
+    if v.get("anon"):
+        acc["write"] = False  # guests borrow a read token: never present its permissions as theirs
+    try:
+        langs = {k: b for k, b in r.get_languages().items() if isinstance(b, int)}  # GitHub may return a status message instead
+    except Exception:  # noqa: BLE001
+        langs = {}
+    total = sum(langs.values()) or 1
+    lang_pct = [{"name": k, "pct": round(100 * b / total, 1)} for k, b in sorted(langs.items(), key=lambda kv: -kv[1])[:5]]
     try:
         readme = r.get_readme().decoded_content.decode("utf-8", "replace")[:3000]
     except Exception:  # noqa: BLE001
         readme = ""
     try:
-        top = [c.path + ("/" if c.type == "dir" else "") for c in r.get_contents("")][:40]
+        top = [c.path + ("/" if c.type == "dir" else "") for c in r.get_contents("")][:60]
     except Exception:  # noqa: BLE001
         top = []
     commits = [{"sha": c.sha[:7], "msg": c.commit.message.splitlines()[0][:90], "author": c.commit.author.name,
                 "date": c.commit.author.date.isoformat()} for c in itertools.islice(r.get_commits(), 6)]
     prs = [{"number": p.number, "title": p.title[:90], "user": p.user.login, "head": p.head.ref}
            for p in itertools.islice(r.get_pulls(state="open"), 10)]
-    has_specs = any(t.startswith("specs/") for t in top)
-    has_tests = any(t.rstrip("/") in ("tests", "test") for t in top)
-    summary = llm.gemini(
-        f"Give 4 short bullet highlights (purpose, structure, health, risks) for this GitHub repo. Be concrete, no fluff.\n"
-        f"Repo {full}: {r.description}\nLanguages: {langs}\nTop-level: {top}\nRecent commits: {commits}\n"
-        f"Open PRs: {prs}\nREADME:\n{readme}", llm.FLASH, "low")
-    return {"repo": full, "access": acc, "languages": langs, "top": top, "commits": commits, "prs": prs,
-            "has_specs": has_specs, "has_tests": has_tests, "summary": summary, "stars": r.stargazers_count}
+    has_specs = any(t.rstrip("/") == "specs" for t in top)
+    has_tests = any(t.rstrip("/") in ("tests", "test", "__tests__", "spec") for t in top)
+    has_ci = any(t.rstrip("/") == ".github" for t in top) and _has_dir(r, ".github/workflows")
+    days = (time.time() - r.pushed_at.timestamp()) / 86400 if r.pushed_at else 9999
+    health = [
+        {"label": "Activity", "ok": days < 90, "detail": "pushed today" if days < 1 else f"last push {int(days)} days ago"},
+        {"label": "Tests", "ok": has_tests, "detail": "tests folder found" if has_tests else "no tests folder found"},
+        {"label": "CI", "ok": has_ci, "detail": "GitHub Actions workflows" if has_ci else "no workflows found"},
+        {"label": "License", "ok": bool(r.license), "detail": r.license.name if r.license else "none declared"},
+        {"label": "Specs", "ok": has_specs, "detail": "specs/ folder found: SpecGuard can build and review here" if has_specs
+         else "no specs/ folder: SpecGuard has nothing to check code against"},
+        {"label": "Open PRs", "ok": None, "detail": f"{len(prs)}{'+' if len(prs) == 10 else ''} open"},
+    ]
+    prompt = f"""Describe this GitHub repository for a developer deciding whether to use or contribute to it.
+Return ONLY JSON, plain English, no markdown, no asterisks:
+{{"tagline": "<=12 words", "what": "two short sentences: what it is and who it is for",
+ "stack": ["up to 6 short technology names"], "notable": ["2-3 short observations about structure or activity"],
+ "watch": ["0-3 short risks or gaps worth knowing"]}}
+
+Repo {full}: {r.description}
+Languages: {lang_pct}
+Top-level files: {top}
+Recent commits: {commits}
+README:
+{readme}"""
+    try:
+        report = llm.extract_json(llm.gemini(prompt, llm.FLASH, "low"))
+    except Exception:  # noqa: BLE001
+        report = {"tagline": r.description or "", "what": (readme[:200] or "No README."), "stack": [], "notable": [], "watch": []}
+    return {"repo": full, "access": acc, "languages": langs, "lang_pct": lang_pct, "top": top, "commits": commits, "prs": prs,
+            "has_specs": has_specs, "has_tests": has_tests, "report": report, "health": health, "stars": r.stargazers_count,
+            "description": r.description or "", "html_url": r.html_url, "private": r.private}
+
+
+@app.get("/api/pr/check")
+def pr_check(url: str, v: dict = Depends(viewer)):
+    """Validate a PR link and say clearly why it can't be reviewed."""
+    try:
+        full, number = gh.parse_pr(url)
+    except ValueError as exc:
+        raise HTTPException(400, "That doesn't look like a PR link. Use https://github.com/owner/repo/pull/123") from exc
+    g = gh.client(v["token"])
+    try:
+        r = g.get_repo(full)
+        pr = r.get_pull(number)
+    except GithubException as exc:
+        raise HTTPException(404, _missing_msg(v, "pull request", exc)) from exc
+    _public_only(r, v)
+    if pr.state != "open":
+        raise HTTPException(409, f"PR #{number} is {'merged' if pr.merged else 'closed'}. SpecGuard reviews open PRs. Paste one that is still open.")
+    if not _has_dir(r, "specs"):
+        raise HTTPException(422, f"{full} has no specs/ folder, so there is nothing to check this PR against. "
+                                 "SpecGuard reviews code against written specs (RFCs, API contracts) kept as markdown under specs/.")
+    return {"ok": True, "repo": full, "number": number, "title": pr.title, "author": pr.user.login, "files": pr.changed_files}
 
 
 # ---------- runs ----------
@@ -197,11 +292,21 @@ async def build(request: Request, u: dict = Depends(user)):
 
 
 @app.post("/api/review")
-async def review(request: Request, u: dict = Depends(user)):
+async def review(request: Request, v: dict = Depends(viewer)):
     b = await request.json()
-    repo = gh.parse_repo(b["repo"], u["login"])
-    run = events.create_run("review", f"PR #{b['pr']}", repo, u["login"])
-    _start(pipeline.run_review, run["run_id"], repo, int(b["pr"]), u["token"], comment=bool(b.get("comment")))
+    repo = gh.parse_repo(b["repo"], "" if v.get("anon") else v["login"])
+    comment = bool(b.get("comment"))
+    if v.get("anon"):
+        if ANON_RUNS.get(v["login"], 0) >= ANON_LIMIT:
+            raise HTTPException(429, "Free preview limit reached (3 reviews). Sign in with GitHub to keep going.")
+        try:
+            _public_only(gh.client(v["token"]).get_repo(repo), v)
+        except GithubException as exc:
+            raise HTTPException(404, _missing_msg(v)) from exc
+        ANON_RUNS[v["login"]] = ANON_RUNS.get(v["login"], 0) + 1
+        comment = False
+    run = events.create_run("review", f"PR #{b['pr']}", repo, v["login"])
+    _start(pipeline.run_review, run["run_id"], repo, int(b["pr"]), v["token"], comment=comment)
     return {"run_id": run["run_id"]}
 
 
@@ -213,17 +318,17 @@ def _own_run(run_id: str, u: dict) -> dict:
 
 
 @app.get("/api/runs")
-def runs(u: dict = Depends(user)):
+def runs(u: dict = Depends(viewer)):
     return [r for r in events.list_runs(50) if r.get("slack_user") == u["login"]][:20]
 
 
 @app.get("/api/runs/{run_id}")
-def run_info(run_id: str, u: dict = Depends(user)):
+def run_info(run_id: str, u: dict = Depends(viewer)):
     return {"run": _own_run(run_id, u), "events": events.get_events(run_id)}
 
 
 @app.post("/api/runs/{run_id}/gate")
-async def gate(run_id: str, request: Request, u: dict = Depends(user)):
+async def gate(run_id: str, request: Request, u: dict = Depends(viewer)):
     _own_run(run_id, u)
     b = await request.json()
     ok = pipeline.GATES.resolve(run_id, b["name"], b["decision"], b.get("text", ""))
@@ -245,7 +350,7 @@ async def post_comment(run_id: str, u: dict = Depends(user)):
 
 
 @app.get("/api/runs/{run_id}/stream")
-async def stream(run_id: str, request: Request, u: dict = Depends(user)):
+async def stream(run_id: str, request: Request, u: dict = Depends(viewer)):
     _own_run(run_id, u)
     after = int(request.headers.get("last-event-id") or request.query_params.get("after") or 0)
 
@@ -286,8 +391,8 @@ async def chat(request: Request, u: dict = Depends(user)):
     ctx = ""
     if b.get("repo"):
         try:
-            h = repo_highlights(*b["repo"].split("/", 1), u=u)
-            ctx = f"\nSelected repo {h['repo']}: access={h['access']}, specs={h['has_specs']}, tests={h['has_tests']}, open PRs={h['prs']}\nSummary: {h['summary']}"
+            h = repo_highlights(*b["repo"].split("/", 1), v=u)
+            ctx = f"\nSelected repo {h['repo']}: access={h['access']}, health={h['health']}, open PRs={h['prs']}\nReport: {h['report']}"
         except Exception as exc:  # noqa: BLE001
             ctx = f"\n(could not read selected repo: {exc})"
     history = "\n".join(f"{m['role']}: {m['text']}" for m in b.get("history", [])[-6:])

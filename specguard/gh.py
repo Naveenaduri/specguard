@@ -12,8 +12,9 @@ from .events import redact
 GIT_ID = ["-c", "user.name=SpecGuard", "-c", "user.email=specguard@users.noreply.github.com"]
 
 
-def client(token: str) -> Github:
-    return Github(auth=Auth.Token(token), per_page=100)
+def client(token: str = "") -> Github:
+    """Authenticated client, or an unauthenticated one (public data only) when no token is given."""
+    return Github(auth=Auth.Token(token), per_page=100) if token else Github(per_page=100)
 
 
 def parse_repo(text: str, default_owner: str = "") -> str:
@@ -41,7 +42,10 @@ def parse_pr(text: str):
 def access(g: Github, full_name: str) -> dict:
     """Scope gate: what can this identity do on the repo?"""
     repo = g.get_repo(full_name)
-    p = repo.permissions
+    p = repo.permissions  # None for unauthenticated clients: public repos are readable, never writable
+    if p is None:
+        return {"repo": full_name, "read": True, "write": False, "admin": False, "private": repo.private,
+                "default_branch": repo.default_branch}
     return {"repo": full_name, "read": bool(p.pull or p.push or p.admin), "write": bool(p.push or p.admin),
             "admin": bool(p.admin), "private": repo.private, "default_branch": repo.default_branch}
 
@@ -57,7 +61,7 @@ def clone(full_name: str, token: str, dest: Path, branch: str | None = None) -> 
     if dest.exists():
         shutil.rmtree(dest, ignore_errors=True)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    url = f"https://x-access-token:{token}@github.com/{full_name}.git"
+    url = f"https://x-access-token:{token}@github.com/{full_name}.git" if token else f"https://github.com/{full_name}.git"
     cmd = ["git", "clone", "--quiet", "--depth", "50"] + (["--branch", branch] if branch else []) + [url, str(dest)]
     _run(cmd)
     _run(["git", "remote", "set-url", "origin", f"https://github.com/{full_name}.git"], cwd=dest)
