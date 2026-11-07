@@ -46,6 +46,17 @@ def run_tests(repo_path, test_files: dict | None = None, only: list | None = Non
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def _condense(longrepr: str, limit: int = 520) -> str:
+    """Keep what matters from a pytest failure: the failing line with context, plus the E lines."""
+    lines = str(longrepr).splitlines()
+    idx = next((i for i, ln in enumerate(lines) if ln.startswith(">")), None)
+    if idx is None:
+        return "\n".join(lines[-8:])[-limit:]
+    ctx = [ln for ln in lines[max(0, idx - 2): idx + 1]]
+    errs = [ln for ln in lines[idx + 1:] if ln.startswith("E ")][:4]
+    return "\n".join(ctx + errs)[:limit]
+
+
 def _parse(data: dict):
     results = []
     # Collection errors (ImportError, SyntaxError) show up under collectors, not tests.
@@ -60,8 +71,9 @@ def _parse(data: dict):
         else:
             phase = "setup" if (t.get("setup") or {}).get("outcome") == "failed" else "call"
             call = t.get(phase) or {}
-            out = str(call.get("longrepr") or call.get("crash") or "")[-600:]
-            tail = [ln for ln in out.splitlines() if ln.startswith("E ")]
+            raw = str(call.get("longrepr") or call.get("crash") or "")
+            out = _condense(raw)
+            tail = [ln for ln in raw.splitlines() if ln.startswith("E ")]
             exc = re.match(r"E\s+([\w.]+)", tail[-1]).group(1) if tail and re.match(r"E\s+([\w.]+)", tail[-1]) else ""
             # Test bugs (broken test code) are errors. A missing API / wrong behaviour at call time is a real failure (red).
             is_bug = phase == "setup" or exc.split(".")[-1] in TEST_BUG_EXC

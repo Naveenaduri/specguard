@@ -442,11 +442,14 @@ function render(e,ctx){
       <textarea id="revEdit" placeholder="e.g. also validate the issuer (iss) claim"></textarea><div class="row" style="margin-top:12px"><button class="btn good" onclick='gate(${JSON.stringify(ctx.id)},"review","approve",this)'>Approve &amp; merge</button>
       <button class="btn" onclick='gate(${JSON.stringify(ctx.id)},"review","changes",this,"revEdit")'>Request changes</button></div>`,'gate');g.dataset.g='review';return}
   if(e.stage==='human_review'&&e.status==='done'){document.querySelectorAll('.gate[data-g=review]').forEach(x=>x.remove());return add(`<div class="t">💬 ${esc(e.title)} <span class="muted">${esc(e.detail)}</span></div>`,'small')}
+  if(e.stage==='comment'&&d.body&&!d.pr_url)return add(`<div class="t">💬 ${esc(e.title)}</div><div class="d">Nothing is posted to GitHub unless you choose to.</div><div class="row" style="margin-top:10px"><button class="btn primary" onclick='postReview(${JSON.stringify(ctx.id)},this)'>Post review to the PR</button></div>`);
+  if(e.stage==='comment'&&d.pr_url)return add(`<div class="t" style="color:var(--green)">✔ ${esc(e.title)}</div><div class="row" style="margin-top:8px"><a class="btn" style="text-decoration:none" target="_blank" rel="noopener" href="${esc(d.pr_url)}">View on GitHub ↗</a></div>`,'green');
   if(e.stage==='merged')return add(`<div class="t big" style="color:var(--green)">🔔 ${esc(e.title)}</div>`,'green');
   if(e.stage==='verdict')return add(`<div class="t big" style="${e.status==='failed'||(d.violations&&d.violations.length)?'color:var(--red)':'color:var(--green)'}">⚖️ ${esc(e.title)}</div><div class="d">${esc(e.detail)}</div>`,(d.violations&&d.violations.length)?'red':'green');
   const bad=e.status==='failed';
   add(`<div class="t" ${bad?'style="color:var(--red)"':''}>${bad?'✘':'✔'} ${esc(e.title)}</div>${e.detail?`<div class="d">${esc(e.detail)}</div>`:''}`,bad?'red':'');
 }
+async function postReview(id,btn){btn.disabled=true;try{await post(`/api/runs/${id}/comment`,{})}catch(e){alert(e.message);btn.disabled=false}}
 async function gate(id,name,decision,btn,taId){
   const text=taId?$('#'+taId).value.trim():'';if(decision!=='approve'&&!text){alert('Tell SpecGuard what to change.');return}
   btn.disabled=true;try{await post(`/api/runs/${id}/gate`,{name,decision,text})}catch(e){alert(e.message);btn.disabled=false}

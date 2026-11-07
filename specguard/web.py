@@ -230,6 +230,20 @@ async def gate(run_id: str, request: Request, u: dict = Depends(user)):
     return {"ok": ok}
 
 
+@app.post("/api/runs/{run_id}/comment")
+async def post_comment(run_id: str, u: dict = Depends(user)):
+    """Post a finished review to the GitHub PR (explicit user action)."""
+    run = _own_run(run_id, u)
+    evs = [e for e in events.get_events(run_id) if e["stage"] == "comment" and (e["data"] or {}).get("body")]
+    if run.get("kind") != "review" or not evs:
+        raise HTTPException(400, "no review to post")
+    pr_number = int(run["feature"].split("#")[-1])
+    pr = gh.client(u["token"]).get_repo(run["repo"]).get_pull(pr_number)
+    c = pr.create_issue_comment(evs[-1]["data"]["body"])
+    events.emit(run_id, "comment", "done", "Posted review to the PR", c.html_url, {"pr_number": pr_number, "pr_url": c.html_url})
+    return {"url": c.html_url}
+
+
 @app.get("/api/runs/{run_id}/stream")
 async def stream(run_id: str, request: Request, u: dict = Depends(user)):
     _own_run(run_id, u)
