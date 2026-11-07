@@ -40,6 +40,15 @@ def verdict_for(findings: list) -> dict:
     return {"label": "Looks good", "tone": "good"}
 
 
+def status_for(verdict: dict, tests: dict) -> tuple:
+    """GitHub commit status for the verdict: a proven defect fails the check, so branch protection can block the merge."""
+    if verdict["tone"] == "bad":
+        return "failure", f"Needs changes: {tests.get('failed', 0)} of {tests.get('run', 0)} proof test(s) failed"[:140]
+    if verdict["tone"] == "warn":
+        return "success", "No failing proof; heads-up items to check"
+    return "success", "No problems proven" + (f" ({tests['run']} test(s) passed)" if tests.get("run") else "")
+
+
 def clean_findings(raw) -> list:
     names = {n.lower(): n for n in CATEGORY_NAMES}
     out = []

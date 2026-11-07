@@ -19,7 +19,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import events, gh, graph, llm, pipeline, prs
+from . import events, gh, graph, llm, pipeline, prs, rubric
 
 load_dotenv()
 STATIC = Path(__file__).parent / "static"
@@ -489,6 +489,14 @@ async def post_comment(run_id: str, u: dict = Depends(user)):
     pr_number = int(run["feature"].split("#")[-1])
     pr = gh.client(u["token"]).get_repo(run["repo"]).get_pull(pr_number)
     c = pr.create_issue_comment(evs[-1]["data"]["body"])
+    card = next((e["data"] for e in events.get_events(run_id) if e["stage"] == "verdict" and e["data"]), None)
+    if card:
+        state, desc = rubric.status_for(card["verdict"], card.get("tests", {}))
+        try:
+            gh.client(u["token"]).get_repo(run["repo"]).get_commit(pr.head.sha).create_status(
+                state, target_url=pr.html_url, description=desc, context="specguard/proof")
+        except Exception:  # noqa: BLE001
+            pass
     events.emit(run_id, "comment", "done", "Posted review to the PR", c.html_url, {"pr_number": pr_number, "pr_url": c.html_url})
     return {"url": c.html_url}
 

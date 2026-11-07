@@ -456,6 +456,12 @@ def _run_review(E, run_id, repo, pr_number, token, comment):
     body = rubric.render_comment(card)
     if comment:
         pr.create_issue_comment(body)
+        state, desc = rubric.status_for(verdict, tests)
+        try:  # a commit status lets branch protection block the merge when a defect is proven
+            gr.get_commit(pr.head.sha).create_status(state, target_url=pr.html_url, description=desc, context="specguard/proof")
+            E("comment", "running", f"Set the specguard/proof check to {state}", desc)
+        except Exception as exc:  # noqa: BLE001
+            E("comment", "running", "Could not set the merge check", str(exc)[:160])
         E("comment", "done", "Posted review to the PR", pr.html_url, {"pr_number": pr_number, "pr_url": pr.html_url})
     else:
         E("comment", "done", "Review ready (not posted to GitHub)", "", {"body": body})

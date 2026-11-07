@@ -70,3 +70,11 @@ def test_render_comment_shows_spec_backing_on_a_finding():
             "tests": {"run": 1, "failed": 1}, "scope": "Scope: ok"}
     md = rubric.render_comment(card)
     assert "Spec :" in md and "RFC 7519 §4.1.3" in md
+
+
+def test_status_for_blocks_only_proven_defects():
+    from specguard.rubric import status_for
+    assert status_for({"tone": "bad"}, {"run": 3, "failed": 1})[0] == "failure"
+    assert status_for({"tone": "warn"}, {})[0] == "success"
+    st, desc = status_for({"tone": "good"}, {"run": 2, "failed": 0})
+    assert st == "success" and "2 test" in desc
