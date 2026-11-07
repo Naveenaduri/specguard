@@ -39,13 +39,24 @@ def classify_prs(plist: list) -> dict:
             ch, pr = a["type"], a["priority"]
             score = float(pr["score"])
             label = (pr.get("legend") or {}).get(str(min(2, max(0, round(score))))) or PRIORITY[min(2, max(0, round(score)))]
-            return p["number"], {"type": ch["choice"], "confidence": round(float(ch.get("confidence", 0)), 2),
+            return p.get("key", p["number"]), {"type": ch["choice"], "confidence": round(float(ch.get("confidence", 0)), 2),
                                  "priority": label, "priority_score": round(score, 1)}
         except Exception:  # noqa: BLE001
-            return p["number"], None
+            return p.get("key", p["number"]), None
 
     with ThreadPoolExecutor(max_workers=8) as pool:
         return {n: d for n, d in pool.map(one, plist) if d}
+
+
+def group_by_repo(plist: list, decisions: dict) -> list:
+    """Owner-wide view: one group per repository, repos with the most review-worthy PRs first."""
+    repos: dict = {}
+    for p in plist:
+        repos.setdefault(p["repo"], []).append({**p, "decision": decisions.get(p["key"])})
+    out = [{"repo": name, "prs": sorted(items, key=lambda x: -((x["decision"] or {}).get("priority_score", -1)))}
+           for name, items in repos.items()]
+    out.sort(key=lambda g: -max(((x["decision"] or {}).get("priority_score", 0) for x in g["prs"]), default=0))
+    return out
 
 
 def group_prs(plist: list, decisions: dict) -> list:

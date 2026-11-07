@@ -321,6 +321,40 @@ def repo_prs(owner: str, name: str, v: dict = Depends(viewer)):
     return out
 
 
+@app.get("/api/owner/{owner}/prs")
+def owner_prs(owner: str, v: dict = Depends(viewer)):
+    """Open PRs across everything this owner has, grouped by repository, each typed and scored by the decision model."""
+    key = (v["login"], owner.lower(), "owner")
+    hit = _PR_CACHE.get(key)
+    if hit and time.time() - hit[0] < 300:
+        return hit[1]
+    g = gh.client(v["token"])
+    try:
+        found = list(itertools.islice(g.search_issues(f"is:pr is:open user:{owner} archived:false", sort="updated", order="desc"), 30))
+    except GithubException as exc:
+        raise HTTPException(404, _missing_msg(v, "user or organisation", exc)) from exc
+
+    def one(i):
+        try:
+            p = i.as_pull_request()
+            files = [f.filename for f in itertools.islice(p.get_files(), 25)]
+            full = i.repository.full_name
+            return {"key": f"{full}#{i.number}", "repo": full, "number": i.number, "title": i.title,
+                    "author": i.user.login if i.user else "", "additions": p.additions, "deletions": p.deletions, "files": files,
+                    "body": (i.body or "")[:800], "url": i.html_url, "draft": bool(p.draft), "private": i.repository.private}
+        except Exception:  # noqa: BLE001
+            return None
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        plist = [p for p in pool.map(one, found) if p and not (v.get("anon") and p["private"])]
+    decisions = prs.classify_prs(plist)
+    for p in plist:
+        p["type"] = prs.NAME.get((decisions.get(p["key"]) or {}).get("type"), "Other")
+    out = {"owner": owner, "total": len(plist), "groups": prs.group_by_repo([{**p, "body": "", "files": []} for p in plist], decisions),
+           "method": "decision-model" if decisions else "none"}
+    _PR_CACHE[key] = (time.time(), out)
+    return out
+
+
 @app.get("/api/pr/check")
 def pr_check(url: str, v: dict = Depends(viewer)):
     """Validate a PR link and say clearly why it can't be reviewed."""
