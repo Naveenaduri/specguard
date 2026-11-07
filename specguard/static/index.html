@@ -160,6 +160,14 @@ pre.sum{white-space:pre-wrap;font:13px/1.6 var(--sans);background:rgba(0,0,0,.3)
 .m.a{align-self:flex-start;background:var(--glass2);border-bottom-left-radius:4px}
 #chat form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation-duration:.01ms!important}}
+.rf{display:flex;align-items:center;background:rgba(0,0,0,.35);border:1px solid var(--line2);border-radius:11px;transition:.15s}
+.rf:focus-within{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(56,225,255,.14)}
+.rf span{padding:0 2px 0 14px;color:var(--dim);font-family:var(--mono);font-size:13px;white-space:nowrap;user-select:none}
+.rf input{border:0!important;background:transparent!important;box-shadow:none!important;padding-left:2px;font-family:var(--mono);font-size:13.5px}
+.try{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:9px;font-size:12px;color:var(--muted)}
+.try button{background:var(--glass);border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.try button:hover{color:var(--text);border-color:var(--cyan)}
+.ferr{color:var(--red);font-size:12.5px;margin-top:8px}
 </style>
 </head>
 <body>
@@ -186,7 +194,7 @@ pre.sum{white-space:pre-wrap;font:13px/1.6 var(--sans);background:rgba(0,0,0,.3)
 const $=s=>document.querySelector(s), app=$('#app');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let ME=null,G=null,SELECTED=null,ES=null,CHAT=[],GR=null,VIEW='graph',FILTER={q:'',chip:'all'};
-const api=async(u,o)=>{const r=await fetch(u,o&&o.body?{...o,headers:{'Content-Type':'application/json'}}:o);if(r.status===401)throw new Error('401');if(!r.ok)throw new Error((await r.json().catch(()=>({detail:r.statusText}))).detail||r.statusText);return r.json()};
+const api=async(u,o)=>{const r=await fetch(u,o&&o.body?{...o,headers:{'Content-Type':'application/json'}}:o);if(r.status===401){if(ME){ME=null;['#userChip','#nav','#chatBtn'].forEach(x=>$(x).classList.add('hide'));closeDrawer();login('Your session expired — please sign in again.')}throw new Error('Session expired')}if(!r.ok)throw new Error((await r.json().catch(()=>({detail:r.statusText}))).detail||r.statusText);return r.json()};
 const post=(u,b)=>api(u,{method:'POST',body:JSON.stringify(b)});
 const LANG={Python:'#4f8cff',TypeScript:'#38bdf8',JavaScript:'#facc15',Go:'#22d3ee',Rust:'#fb923c',Java:'#f87171','C++':'#f472b6',C:'#94a3b8','C#':'#a78bfa',Ruby:'#fb7185',Shell:'#86efac',HTML:'#fb923c',CSS:'#a78bfa',Jupyter:'#fdba74','Jupyter Notebook':'#fdba74',Kotlin:'#c084fc',Swift:'#fb923c'};
 const langColor=l=>l?(LANG[l]||'#'+[...l].reduce((h,c)=>(h*31+c.charCodeAt(0))>>>0,7).toString(16).padStart(6,'0').slice(0,6)):'#5b6785';
@@ -203,14 +211,18 @@ async function init(){
   ['#userChip','#nav','#chatBtn'].forEach(s=>$(s).classList.toggle('hide',!ME));
   if(ME){$('#avatar').src=ME.avatar;$('#uname').textContent=ME.login;go((location.hash||'#home').slice(1).split(':')[0])}else login();
 }
-async function login(){
+async function login(msg){
   const c=await api('/auth/config');
   app.innerHTML=`<div class="hero"><div class="eyebrow">Proof-driven development</div>
   <h1>Don't review AI code.<br><span class="grad">Review its proof.</span></h1>
   <p>SpecGuard turns a feature request into cited spec clauses, writes the tests first, implements until they pass, and reviews any PR by running tests — never by guessing.</p>
-  ${c.github?`<a class="btn primary cta" href="/auth/github">Continue with GitHub</a>`:`<div class="notice" style="max-width:520px;margin:0 auto">GitHub OAuth isn't configured on this server yet. Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.</div>`}
+  ${msg?`<div class="notice" style="max-width:520px;margin:0 auto 22px">${esc(msg)}</div>`:''}${c.github?`<a class="btn primary cta" href="/auth/github">Continue with GitHub</a>`:`<div class="notice" style="max-width:520px;margin:0 auto">GitHub OAuth isn't configured on this server yet. Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.</div>`}
   ${c.local?`<p style="margin-top:20px;font-size:13px"><a href="/auth/local" class="muted">Local dev sign-in</a></p>`:''}</div>`;
 }
+const normRepo=v=>{v=(v||'').trim().replace(/^https?:\/\/(www\.)?github\.com\//i,'').replace(/^github\.com\//i,'').replace(/\.git$/i,'').replace(/[?#].*$/,'').replace(/\/+$/,'');const m=v.match(/^([\w.-]+)\/([\w.-]+)/);return m?m[1]+'/'+m[2]:(/^[\w.-]+$/.test(v)&&v&&ME?ME.login+'/'+v:'')};
+const EXAMPLES=['open-telemetry/opentelemetry-python','Naveenaduri/tinyjwt'];
+const repoField=(id,val,list)=>`<div class="rf"><span>https://github.com/</span><input id="${id}" list="${list}" placeholder="owner/repo" value="${esc(val)}" autocomplete="off" spellcheck="false" onpaste="setTimeout(()=>{this.value=normRepo(this.value)||this.value},0)"></div>
+  <div class="try">Try <button type="button" onclick="document.getElementById('${id}').value='${EXAMPLES[0]}'">${EXAMPLES[0]}</button><button type="button" onclick="document.getElementById('${id}').value='${EXAMPLES[1]}'">${EXAMPLES[1]}</button></div><div class="ferr" id="${id}Err"></div>`;
 async function logout(){await post('/auth/logout',{});location.reload()}
 function go(v,arg){
   if(ES){ES.close();ES=null} if(GR){GR.stop();GR=null}
@@ -378,21 +390,21 @@ function makeGraph(cv,G){
 
 /* ---------- read a repo ---------- */
 function readView(){
-  app.innerHTML=`<h2>Read a repo</h2><p class="sub">Highlights, health, and one-click review of any open PR.</p><div class="panel" style="max-width:680px"><label>Repository</label><input id="rin" list="rl" placeholder="owner/name" value="${esc(SELECTED||'')}"><datalist id="rl"></datalist><div class="row" style="margin-top:16px"><button class="btn primary" onclick="doRead()">Read it</button></div></div><div class="panel hide" id="rout" style="margin-top:18px;max-width:680px"></div>`;
+  app.innerHTML=`<h2>Read a repo</h2><p class="sub">Highlights, health, and one-click review of any open PR.</p><div class="panel" style="max-width:680px"><label>GitHub repository — public or one you can access</label>${repoField('rin',SELECTED||'','rl')}<datalist id="rl"></datalist><div class="row" style="margin-top:16px"><button class="btn primary" onclick="doRead()">Read it</button></div></div><div class="panel hide" id="rout" style="margin-top:18px;max-width:680px"></div>`;
   loadGraph().then(g=>$('#rl').innerHTML=g.repos.map(r=>`<option value="${esc(r.full_name)}">`).join('')).catch(()=>{});
 }
-async function doRead(){const v=$('#rin').value.trim();if(!v)return;const full=v.includes('/')?v:ME.login+'/'+v;setCtx(full);const o=$('#rout');o.classList.remove('hide');o.innerHTML='<div id="d2"></div>';readInto(full,'#d2')}
+async function doRead(){const full=normRepo($('#rin').value);if(!full){$('#rinErr').textContent='Enter it as owner/repo — for example open-telemetry/opentelemetry-python';return}$('#rinErr').textContent='';$('#rin').value=full;setCtx(full);const o=$('#rout');o.classList.remove('hide');o.innerHTML='<div id="d2"></div>';readInto(full,'#d2')}
 
 /* ---------- build / review runs ---------- */
 function buildView(repo){
   app.innerHTML=`<h2>Create a new feature</h2><p class="sub">Built test-first against the specs in the repo, then opened as a PR with the evidence.</p>
-  <div class="panel" style="max-width:740px"><label>Repository · needs write access and a specs/ folder</label><input id="brepo" list="rl2" value="${esc(repo||SELECTED||'')}" placeholder="owner/name"><datalist id="rl2"></datalist>
+  <div class="panel" style="max-width:740px"><label>GitHub repository — needs write access and a specs/ folder</label>${repoField('brepo',repo||SELECTED||'','rl2')}<datalist id="rl2"></datalist>
   <label>What should it do?</label><textarea id="bfeat" placeholder="e.g. add audience (aud) claim validation to decode"></textarea>
   <div class="row" style="margin-top:18px"><button class="btn primary" id="bgo" onclick="startBuild()">Start build</button></div><div id="berr"></div></div>`;
   loadGraph().then(g=>$('#rl2').innerHTML=g.repos.filter(r=>r.write).map(r=>`<option value="${esc(r.full_name)}">`).join('')).catch(()=>{});
 }
 async function startBuild(){
-  const repo=$('#brepo').value.trim(),feature=$('#bfeat').value.trim();if(!repo||!feature){$('#berr').innerHTML='<div class="notice">Pick a repo and describe the feature.</div>';return}
+  const repo=normRepo($('#brepo').value),feature=$('#bfeat').value.trim();if(!repo){$('#brepoErr').textContent='Enter it as owner/repo — for example Naveenaduri/tinyjwt';return}$('#brepoErr').textContent='';if(!feature){$('#berr').innerHTML='<div class="notice">Describe the feature you want.</div>';return}
   $('#bgo').disabled=true;try{const r=await post('/api/build',{repo,feature});openRun(r.run_id)}catch(e){$('#berr').innerHTML=`<div class="notice">${esc(e.message)}</div>`;$('#bgo').disabled=false}
 }
 async function startReview(repo,pr){try{const r=await post('/api/review',{repo,pr,comment:false});closeDrawer();openRun(r.run_id)}catch(e){alert(e.message)}}
