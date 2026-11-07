@@ -26,6 +26,16 @@ def deterministic_edges(repos: list) -> list:
     def add(a, b, typ, why, w):
         edges.append({"a": a, "b": b, "type": typ, "why": why, "w": w})
 
+    df: dict = {}
+    for r in repos:
+        for t in _tokens(r["name"]):
+            df[t] = df.get(t, 0) + 1
+    common = {t for t, c in df.items() if c > max(3, len(repos) * .1)}  # a word most repos share (e.g. the org name) links nothing
+    tdf: dict = {}
+    for r in repos:
+        for t in set(r.get("topics") or []):
+            tdf[t] = tdf.get(t, 0) + 1
+    common_topics = {t for t, c in tdf.items() if c > max(3, len(repos) * .1)}
     for x, y in itertools.combinations(repos, 2):
         a, b = x["full_name"], y["full_name"]
         if x["fork"] and x.get("parent") == b or y["fork"] and y.get("parent") == a:
@@ -35,11 +45,11 @@ def deterministic_edges(repos: list) -> list:
             add(a, b, "same", "same project name", .9)
             continue
         tx, ty = _tokens(x["name"]), _tokens(y["name"])
-        shared = [t for t in tx for u in ty if _tok_match(t, u)]
+        shared = [t for t in tx for u in ty if _tok_match(t, u) and t not in common and u not in common]
         if shared:
             add(a, b, "name", f"similar name: {shared[0]}", .55)
             continue
-        topics = set(x.get("topics") or []) & set(y.get("topics") or [])
+        topics = (set(x.get("topics") or []) & set(y.get("topics") or [])) - common_topics
         if topics:
             add(a, b, "topic", "shared topic: " + ", ".join(sorted(topics)[:2]), .5)
     return edges

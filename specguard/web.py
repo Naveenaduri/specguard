@@ -8,6 +8,7 @@ import subprocess
 import threading
 import time
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import httpx
@@ -18,7 +19,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import events, gh, graph, llm, pipeline
+from . import events, gh, graph, llm, pipeline, prs
 
 load_dotenv()
 STATIC = Path(__file__).parent / "static"
@@ -153,23 +154,33 @@ def me(request: Request):
 _GRAPH_CACHE: dict = {}
 
 
-def _repo_rows(g) -> list:
-    out = []
-    for r in itertools.islice(g.get_user().get_repos(sort="pushed", direction="desc"), 60):
-        p = r.permissions
-        parent = None
-        if r.fork:
-            try:
-                parent = r.parent.full_name if r.parent else None
-            except Exception:  # noqa: BLE001
-                parent = None
-        out.append({"full_name": r.full_name, "name": r.name, "owner": r.owner.login, "language": r.language,
-                    "stars": r.stargazers_count, "forks": r.forks_count, "size": r.size, "private": r.private,
-                    "issues": r.open_issues_count, "pushed_at": r.pushed_at.isoformat() if r.pushed_at else "",
-                    "created_at": r.created_at.isoformat() if r.created_at else "", "topics": list(r.topics or []),
-                    "description": r.description or "", "write": bool(p and (p.push or p.admin)),
-                    "fork": r.fork, "parent": parent, "archived": r.archived})
-    return out
+def _row(r) -> dict:
+    p = r.permissions
+    parent = None
+    if r.fork:
+        try:
+            parent = r.parent.full_name if r.parent else None
+        except Exception:  # noqa: BLE001
+            parent = None
+    return {"full_name": r.full_name, "name": r.name, "owner": r.owner.login, "language": r.language,
+            "stars": r.stargazers_count, "forks": r.forks_count, "size": r.size, "private": r.private,
+            "issues": r.open_issues_count, "pushed_at": r.pushed_at.isoformat() if r.pushed_at else "",
+            "created_at": r.created_at.isoformat() if r.created_at else "", "topics": list(r.topics or []),
+            "description": r.description or "", "write": bool(p and (p.push or p.admin)),
+            "fork": r.fork, "parent": parent, "archived": r.archived}
+
+
+def _repo_rows(g, owner: str = "", me: str = "") -> list:
+    """Repos of the signed-in user (incl. private) when owner is empty or is the user; otherwise the owner's public repos."""
+    if not owner or owner.lower() == me.lower():
+        it = g.get_user().get_repos(sort="pushed", direction="desc")
+    else:
+        try:
+            it = g.get_user(owner).get_repos(type="owner", sort="pushed", direction="desc")
+            next(iter(it), None)  # force the first request so a bad name fails here
+        except GithubException as exc:
+            raise HTTPException(404, "We couldn't find that GitHub user or organisation. Check the spelling.") from exc
+    return [_row(r) for r in itertools.islice(it, 60)]
 
 
 @app.get("/api/repos")
@@ -178,13 +189,35 @@ def repos(u: dict = Depends(user)):
 
 
 @app.get("/api/graph")
-def repo_graph(refresh: int = 0, u: dict = Depends(user)):
-    hit = _GRAPH_CACHE.get(u["login"])
+def repo_graph(refresh: int = 0, owner: str = "", v: dict = Depends(viewer)):
+    owner = owner.strip()
+    if owner and not owner.replace("-", "").replace("_", "").replace(".", "").isalnum():
+        raise HTTPException(400, "That doesn't look like a GitHub user or organisation name.")
+    if v.get("anon") and not owner:
+        raise HTTPException(400, "Enter a GitHub user or organisation to explore, or sign in to see your own repositories.")
+    me = "" if v.get("anon") else v["login"]
+    key = (v["login"], owner.lower() or me.lower())
+    hit = _GRAPH_CACHE.get(key)
     if hit and not refresh and time.time() - hit[0] < 600:
         return hit[1]
-    rows = _repo_rows(gh.client(u["token"]))
-    data = {"repos": rows, **graph.build_graph(rows)}
-    _GRAPH_CACHE[u["login"]] = (time.time(), data)
+    g = gh.client(v["token"])
+    rows = _repo_rows(g, owner, me)
+    if not rows:
+        raise HTTPException(404, "That account has no public repositories to show.")
+
+    def readme(row):
+        try:
+            row["readme"] = g.get_repo(row["full_name"], lazy=True).get_readme().decoded_content.decode("utf-8", "replace")[:1500]
+        except Exception:  # noqa: BLE001
+            row["readme"] = ""
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        list(pool.map(readme, rows))
+    if v.get("anon"):  # guests borrow a read token: never present its permissions as theirs
+        for r in rows:
+            r["write"] = False
+    data = {"owner": owner or me, "mine": (owner or me).lower() == me.lower() and bool(me),
+            "repos": [{k: x for k, x in r.items() if k != "readme"} for r in rows], **graph.build_graph(rows)}
+    _GRAPH_CACHE[key] = (time.time(), data)
     return data
 
 
@@ -250,6 +283,42 @@ README:
     return {"repo": full, "access": acc, "languages": langs, "lang_pct": lang_pct, "top": top, "commits": commits, "prs": prs,
             "has_specs": has_specs, "has_tests": has_tests, "report": report, "health": health, "stars": r.stargazers_count,
             "description": r.description or "", "html_url": r.html_url, "private": r.private}
+
+
+_PR_CACHE: dict = {}
+
+
+@app.get("/api/repo/{owner}/{name}/prs")
+def repo_prs(owner: str, name: str, v: dict = Depends(viewer)):
+    """Open PRs grouped by change type, each with a review-priority score (SubQ decision model)."""
+    full = f"{owner}/{name}"
+    key = (v["login"], full)
+    hit = _PR_CACHE.get(key)
+    if hit and time.time() - hit[0] < 300:
+        return hit[1]
+    g = gh.client(v["token"])
+    try:
+        r = g.get_repo(full)
+    except GithubException as exc:
+        raise HTTPException(404, _missing_msg(v, exc=exc)) from exc
+    _public_only(r, v)
+    raw = list(itertools.islice(r.get_pulls(state="open", sort="updated", direction="desc"), 20))
+
+    def one(p):
+        try:
+            files = [f.filename for f in itertools.islice(p.get_files(), 25)]
+        except Exception:  # noqa: BLE001
+            files = []
+        return {"number": p.number, "title": p.title, "author": p.user.login if p.user else "", "additions": p.additions,
+                "deletions": p.deletions, "files": files, "body": p.body or "", "created_at": p.created_at.isoformat(),
+                "url": p.html_url, "draft": bool(p.draft)}
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        plist = list(pool.map(one, raw))
+    decisions = prs.classify_prs(plist)
+    groups = prs.group_prs([{k: x for k, x in p.items() if k != "body"} | {"body": ""} for p in plist], decisions)
+    out = {"repo": full, "total": len(plist), "groups": groups, "method": "decision-model" if decisions else "none"}
+    _PR_CACHE[key] = (time.time(), out)
+    return out
 
 
 @app.get("/api/pr/check")

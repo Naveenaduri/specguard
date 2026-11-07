@@ -235,6 +235,14 @@ h2{font-size:30px} .sub{margin:8px 0 38px} label{margin:24px 0 10px}
 .cat-prob{display:grid;grid-template-columns:1fr 40px;gap:10px;align-items:center;margin:4px 0;font-size:12.5px;color:var(--muted)}
 .cat-prob i{display:block;height:5px;border-radius:99px;background:linear-gradient(90deg,var(--cyan),var(--violet))}
 .hl{color:var(--text)}
+
+.xbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.xbar .rf{flex:1;min-width:260px;max-width:640px}
+.xbar .btn.on{border-color:var(--cyan);background:rgba(56,225,255,.1)}
+.pgroup{margin-bottom:38px} .pgroup h4{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 14px;font-weight:500} .pgroup h4 .muted{margin-left:8px}
+.prow{display:grid;grid-template-columns:62px 1fr auto auto;gap:16px;align-items:center;padding:16px 20px;border:1px solid var(--line);border-radius:14px;background:var(--glass);margin-bottom:10px;transition:.15s}
+.prow:hover{border-color:var(--line2);background:var(--glass2)} .prow .pt{min-width:0;line-height:1.5} .prow .pt small{display:block;font-size:12.5px;margin-top:2px}
+@media(max-width:700px){.prow{grid-template-columns:1fr auto}.prow>b,.prow>.pill{display:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation-duration:.01ms!important}}
 .rf{display:flex;align-items:center;background:rgba(0,0,0,.35);border:1px solid var(--line2);border-radius:11px;transition:.15s}
 .rf:focus-within{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(56,225,255,.14)}
@@ -244,15 +252,17 @@ h2{font-size:30px} .sub{margin:8px 0 38px} label{margin:24px 0 10px}
 .try button{background:var(--glass);border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
 .try button:hover{color:var(--text);border-color:var(--cyan)}
 .ferr{color:var(--red);font-size:12.5px;margin-top:8px}
+.chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin} .fc{white-space:nowrap;flex:none}
+.stage{height:calc(100vh - 290px);min-height:480px}
 </style>
 </head>
 <body>
 <header>
-  <div class="logo" onclick="ME?go('home'):landing()">
+  <div class="logo" onclick="go('explore')">
     <svg viewBox="0 0 32 32" fill="none"><path d="M16 2l11 4v9c0 7-4.6 12.2-11 15C9.6 27.200 5 22 5 15V6l11-4z" stroke="url(#g)" stroke-width="1.8"/><circle cx="16" cy="11" r="2.2" fill="#38e1ff"/><circle cx="11" cy="19" r="2" fill="#8b7bff"/><circle cx="21" cy="19" r="2" fill="#3dffb0"/><path d="M16 13l-4 5M16 13l4 5M13 19h6" stroke="#9fb0d4" stroke-width="1"/><defs><linearGradient id="g" x1="5" y1="2" x2="27" y2="30"><stop stop-color="#38e1ff"/><stop offset="1" stop-color="#8b7bff"/></linearGradient></defs></svg>
     <b>SpecGuard</b>
   </div>
-  <nav id="nav" class="hide"><button data-v="home" onclick="go('home')">Home</button><button data-v="explore" onclick="go('explore')">Explore</button><button data-v="read" onclick="go('read')">Read</button><button data-v="build" onclick="go('build')">Build</button></nav>
+  <nav id="nav"><button data-v="explore" onclick="go('explore')">Explore</button><button data-v="prs" onclick="go('prs')">Pull requests</button><button data-v="build" onclick="go('build')">Build</button></nav>
   <div class="sp"></div>
   <a class="btn primary sm hide" id="signin" href="/auth/github">Sign in with GitHub</a>
   <div class="chip hide" id="userChip"><img id="avatar" alt=""><span id="uname"></span><button onclick="logout()">Sign out</button></div>
@@ -284,33 +294,20 @@ const ICON={build:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
  read:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5v-13zM20 5.5c0-.8-.7-1.5-1.500-1.500H13v16h5.500c.8 0 1.500-.7 1.500-1.500v-13z"/></svg>',
  map:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="6" cy="7" r="2.500"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="17" r="3"/><path d="M8 8l2.800 6.500M16.500 7.500L13.500 14.500M8.500 7h7.500"/></svg>'};
 
+let SIGNIN='/auth/github';
 async function init(){
   try{ME=await api('/api/me')}catch(e){ME=null}
-  ['#userChip','#nav','#chatBtn'].forEach(x=>$(x).classList.toggle('hide',!ME));
+  ['#userChip','#chatBtn'].forEach(x=>$(x).classList.toggle('hide',!ME));
   $('#signin').classList.toggle('hide',!!ME);
-  const C=await api('/auth/config').catch(()=>({}));$('#signin').href=C.github?'/auth/github':(C.local?'/auth/local':'/auth/github');
-  const [v,...rest]=(location.hash||'').slice(1).split(':');
+  const C=await api('/auth/config').catch(()=>({}));SIGNIN=C.github?'/auth/github':(C.local?'/auth/local':'/auth/github');$('#signin').href=SIGNIN;
   if(ME){$('#avatar').src=ME.avatar;$('#uname').textContent=ME.login}
+  const [v,...rest]=(location.hash||'').slice(1).split(':');
   if(v==='run'&&rest[0])return openRun(rest[0]);
-  if(v==='try'&&rest.length){await landing();fillT('tin',rest.join(':'));return analyze('tin','tout')}
-  if(ME)go(v||'home');else landing();
+  if(v==='try'&&rest.length){await go('explore');fillT('xin',rest.join(':'));return xgo()}
+  go(({home:'explore',read:'explore'})[v]||v||'explore',v==='prs'&&rest.length?rest.join(':'):undefined);
 }
 const login=msg=>landing(msg);
-async function landing(msg){
-  if(ES){ES.close();ES=null}app.classList.remove('wide');
-  const c=await api('/auth/config').catch(()=>({}));
-  app.innerHTML=`<div class="hero" style="padding-top:44px"><div class="eyebrow">Proof-driven development</div>
-  <h1>Don't review AI code.<br><span class="grad">Review its proof.</span></h1>
-  <p>SpecGuard writes the tests first, implements until they pass, and reviews any PR by running tests — never by guessing.</p>
-  ${msg?`<div class="notice" style="max-width:560px;margin:0 auto 22px">${esc(msg)}</div>`:''}</div>
-  <div class="panel tryp"><label style="margin-top:0">Try it now — no sign-in needed</label>${targetField('tin','tout')}
-   <div class="row" style="margin-top:14px"><button class="btn primary" onclick="analyze('tin','tout')">Analyze</button><span class="muted" style="font-size:12.5px">Paste a public repo for a report, or any open PR to review it. Reviews are read-only.</span></div></div>
-  <div id="tout" style="max-width:720px;margin:18px auto 0"></div>
-  <div class="steps"><div><b>1</b><span>Understand</span><small>What the change does, in plain English</small></div><div><b>2</b><span>Score</span><small>Nine review categories, decided by SubQ</small></div><div><b>3</b><span>Prove</span><small>Problems are backed by an executed failing test</small></div></div>
-  <p class="muted" style="text-align:center;margin-top:34px;font-size:13.5px">Sign in with GitHub to build features, explore your repos as a map, review private PRs and post reviews.
-   <a class="btn sm" style="margin-left:8px;text-decoration:none" href="${c.github?'/auth/github':(c.local?'/auth/local':'/auth/github')}">${c.github||!c.local?'Sign in with GitHub':'Local dev sign-in'}</a></p>`;
-  startBg();
-}
+function landing(msg){if(msg)toast(msg);go('explore')}
 let BG=null;
 function startBg(){if(BG||matchMedia('(prefers-reduced-motion: reduce)').matches)return;const cv=$('#bg');cv.classList.remove('hide');const ctx=cv.getContext('2d'),dpr=Math.min(devicePixelRatio||1,2);let W,H,pts=[];
   const size=()=>{W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);pts=Array.from({length:Math.round(W*H/20000)},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.28,vy:(Math.random()-.5)*.28}))};size();addEventListener('resize',size);
@@ -321,10 +318,10 @@ function startBg(){if(BG||matchMedia('(prefers-reduced-motion: reduce)').matches
 function stopBg(){if(BG)BG.stop()}
 const parseTarget=v=>{v=(v||'').trim().replace(/^https?:\/\/(www\.)?github\.com\//i,'').replace(/^github\.com\//i,'').replace(/[?#].*$/,'').replace(/\/+$/,'');
   let m=v.match(/^([\w.-]+)\/([\w.-]+?)(?:\.git)?\/pull\/(\d+)/)||v.match(/^([\w.-]+)\/([\w.-]+?)#(\d+)$/);
-  if(m)return{repo:m[1]+'/'+m[2],pr:+m[3]};
+  if(m)return{owner:m[1],repo:m[1]+'/'+m[2],pr:+m[3]};
   m=v.match(/^([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:\/.*)?$/);
-  if(m)return{repo:m[1]+'/'+m[2]};
-  return /^[\w.-]+$/.test(v)&&v&&ME?{repo:ME.login+'/'+v}:{}};
+  if(m)return{owner:m[1],repo:m[1]+'/'+m[2]};
+  return /^[\w.-]+$/.test(v)&&v?{owner:v}:{}};
 const normRepo=v=>parseTarget(v).repo||'';
 const EXAMPLES=['open-telemetry/opentelemetry-python','Naveenaduri/tinyjwt'];
 const fillT=(id,v)=>{const i=document.getElementById(id);i.value=v;i.focus()};
@@ -362,9 +359,9 @@ function reportHtml(h){
 async function logout(){await post('/auth/logout',{});location.reload()}
 function go(v,arg){
   stopBg();if(ES){ES.close();ES=null} if(GR){GR.stop();GR=null}
-  closeDrawer(); const f={home,explore,read:readView,build:buildView}[v]||home; v=f===home?'home':v;
+  closeDrawer(); const f={explore,prs:prsView,read:readView,build:buildView}[v]||explore; v=f===explore?'explore':v;
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
-  app.classList.toggle('wide',v==='explore'); if(location.hash.slice(1).split(':')[0]!==v)history.replaceState(null,'','#'+v); f(arg);
+  app.classList.toggle('wide',v==='explore'); if(location.hash.slice(1).split(':')[0]!==v)history.replaceState(null,'','#'+v); return f(arg);
 }
 function setCtx(r){SELECTED=r;$('#chatCtx').textContent=r||''}
 
@@ -378,31 +375,55 @@ function home(){
   </div><div class="recent" id="recent"></div>`;
   api('/api/runs').then(rs=>{if(!rs.length)return;$('#recent').innerHTML=`<h3>Recent runs</h3>`+rs.slice(0,5).map(r=>`<div class="rrow" onclick='openRun(${JSON.stringify(r.run_id)})'><span>${r.kind==='build'?'✦':'◎'}</span><span class="t">${esc(r.feature)} <span class="muted">· ${esc(r.repo)}</span></span><span class="pill ${r.status==='done'?'ok':r.status==='failed'?'no':'cy'}">${esc(r.status)}</span></div>`).join('')}).catch(()=>{});
 }
-async function loadGraph(refresh){if(!G||refresh)G=await api('/api/graph'+(refresh?'?refresh=1':''));return G}
+const GC={};
+async function loadGraph(owner,refresh){const k=(owner||'@me').toLowerCase();if(!GC[k]||refresh)GC[k]=await api('/api/graph?'+new URLSearchParams({...(owner?{owner}:{}),...(refresh?{refresh:1}:{})}));G=GC[k];return G}
 
 /* ---------- explore ---------- */
 const matches=r=>{const q=FILTER.q.toLowerCase();if(q&&!(r.full_name+' '+(r.description||'')+' '+(r.language||'')+' '+clusterOf(r).name).toLowerCase().includes(q))return false;
   const c=FILTER.chip;return c==='all'||(c==='write'&&r.write)||(c==='private'&&r.private)||(c==='recent'&&(Date.now()-new Date(r.pushed_at))/864e5<30)||(c==='fork'&&r.fork)||(c==='attention'&&(decisionOf(r)||{}).attention>=.9)||(c.startsWith('cat:')&&clusterOf(r).name===c.slice(4))||(c.startsWith('lang:')&&r.language===c.slice(5))};
 const decisionOf=r=>((G&&G.decisions)||{})[r.full_name];
 const clusterOf=r=>G.clusters.find(c=>c.id===G.assign[r.full_name])||{name:'Other',blurb:''};
-async function explore(){
-  const sub=location.hash.split(':');if(sub[1]==='list')VIEW='list';
-  app.innerHTML=`<div class="bar">
-    <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.500-3.500"/></svg><input id="q" placeholder="Search repos, languages, themes…" value="${esc(FILTER.q)}"></div>
-    <div class="chips" id="chips"></div><div class="sp"></div>
+let EXP={owner:null};
+async function explore(arg){
+  const sub=location.hash.split(':');arg=arg||{};
+  if(sub[1]==='list')VIEW='list';
+  if(sub[1]==='owner'&&sub[2])arg={owner:sub[2]};
+  if(sub[1]==='pick'&&sub[2])arg={owner:sub[2].split('/')[0],pick:sub.slice(2).join(':')};
+  const owner=arg.owner!==undefined?(arg.owner||null):EXP.owner;EXP.owner=owner;
+  const showing=owner||ME;
+  const bar=`<div class="xbar"><div class="rf"><span>https://github.com/</span><input id="xin" placeholder="owner   ·   owner/repo   ·   owner/repo/pull/123" value="${esc(owner||'')}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')xgo()" onpaste="${pasteFix}"></div>
+    <button class="btn primary" onclick="xgo()">Explore</button>${ME?`<button class="btn ${owner?'':'on'}" onclick="go('explore',{owner:''})">My repos</button>`:''}</div><div class="ferr" id="xinErr"></div><div id="xout"></div>`;
+  const hero=`<div class="hero" style="padding-top:60px"><div class="eyebrow">Proof-driven development</div>
+    <h1>Don't review AI code.<br><span class="grad">Review its proof.</span></h1>
+    <p>Type any GitHub user or organisation to see their repos as a map. Open a repo to review its pull requests. No sign-in needed.</p>
+    <div class="try" style="justify-content:center;margin-top:6px">Try <button type="button" onclick="fillT('xin','open-telemetry');xgo()"><b style="color:var(--cyan)">explore a org</b> · open-telemetry</button><button type="button" onclick="fillT('xin','Naveenaduri/tinyjwt/pull/2');xgo()"><b style="color:var(--green)">review a PR</b> · Naveenaduri/tinyjwt/pull/2</button></div></div>
+    <div class="steps"><div><b>1</b><span>Understand</span><small>What the change does, in plain English</small></div><div><b>2</b><span>Score</span><small>Nine review categories, decided by SubQ</small></div><div><b>3</b><span>Prove</span><small>Problems are backed by an executed failing test</small></div></div>
+    <p class="muted" style="text-align:center;margin-top:34px;font-size:13.5px">Sign in with GitHub to see your own repos, build features and post reviews.
+    <a class="btn sm" style="margin-left:8px;text-decoration:none" href="${SIGNIN}">Sign in with GitHub</a></p>`;
+  const stage=`<div class="bar">
+    <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.500-3.500"/></svg><input id="q" placeholder="Search repos, languages, themes…" value="${esc(FILTER.q)}"></div><div class="sp"></div>
     <div class="seg"><button data-v="graph" class="${VIEW==='graph'?'on':''}">Graph</button><button data-v="list" class="${VIEW==='list'?'on':''}">List</button></div>
     <button class="btn sm" id="refresh" title="Recompute relationships">↻</button></div>
-  <div class="stage ${VIEW==='graph'?'':'hide'}" id="stage"><canvas id="cv"></canvas><div class="tip" id="tip"></div><div class="loading" id="load"><div><div class="spin"></div>Mapping your repositories…</div></div>
+  <div class="chips" id="chips" style="margin-bottom:16px"></div>
+  <div class="stage ${VIEW==='graph'?'':'hide'}" id="stage"><canvas id="cv"></canvas><div class="tip" id="tip"></div><div class="loading" id="load"><div><div class="spin"></div>Mapping ${owner?esc(owner)+"'s":'your'} repositories…</div></div>
    <div class="key" id="key"></div><div class="zoom"><button onclick="GR&&GR.zoomBy(1.25)">+</button><button onclick="GR&&GR.zoomBy(.8)">−</button><button onclick="GR&&GR.fit()" title="Fit">⤢</button></div></div>
   <div id="list" class="${VIEW==='list'?'':'hide'}"></div>`;
+  app.innerHTML=bar+(showing?stage:hero);
+  if(!showing){startBg();return}
   $('#q').oninput=e=>{FILTER.q=e.target.value;applyFilter()};
   document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{VIEW=b.dataset.v;document.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on',x===b));$('#stage').classList.toggle('hide',VIEW!=='graph');$('#list').classList.toggle('hide',VIEW!=='list');if(VIEW==='graph'&&GR)GR.resize()});
-  $('#refresh').onclick=async()=>{G=null;go('explore')};
-  try{await loadGraph()}catch(e){$('#load').innerHTML=`<div class="notice">Could not load repos: ${esc(e.message)}</div>`;return}
-  renderChips();renderList();
-  $('#key').innerHTML=`<span style="color:var(--cyan)">${G.method==='decision-model'?'◆ categories decided per repo by SubQ Snap 1.1 — built from your repos':'◇ categories grouped by AI (decision model unavailable)'}</span>`+Object.entries(EDGE).map(([k,[c,l]])=>`<span><i style="background:${c}"></i>${l}</span>`).join('')+'<span style="color:#ffc15a">◌ read-only</span><span>◌ private</span>';
-  $('#load').classList.add('hide');GR=makeGraph($('#cv'),G);applyFilter();if(sub[1]==='pick')setTimeout(()=>pick(sub.slice(2).join(':')),400);
+  $('#refresh').onclick=async()=>{try{await loadGraph(owner,true)}catch(e){}go('explore',{owner:owner||''})};
+  try{await loadGraph(owner)}catch(e){$('#stage').classList.add('hide');$('#list').classList.add('hide');$('#xinErr').textContent=e.message;return}
+  FILTER.chip='all';renderChips();renderList();
+  $('#key').innerHTML=`<span style="color:var(--cyan)">${G.method==='decision-model'?'◆ categories decided per repo by SubQ Snap 1.1 — built from '+(owner?esc(owner)+"'s":'your')+' repos':'◇ categories grouped by AI (decision model unavailable)'}</span>`+Object.entries(EDGE).map(([k,[c,l]])=>`<span><i style="background:${c}"></i>${l}</span>`).join('')+'<span style="color:#ffc15a">◌ read-only</span><span>◌ private</span>';
+  $('#load').classList.add('hide');GR=makeGraph($('#cv'),G);applyFilter();if(arg.pick)setTimeout(()=>pick(arg.pick),400);
 }
+function xgo(){
+  const t=parseTarget($('#xin').value),err=$('#xinErr');err.textContent='';
+  if(!t.owner){err.textContent='Enter a GitHub user or organisation like open-telemetry, or owner/repo, or an open PR link.';return}
+  if(t.pr)return analyze('xin','xout');
+  if(t.repo)return go('explore',{owner:t.owner,pick:t.repo});
+  go('explore',{owner:t.owner})}
 function renderChips(){
   const hasAtt=G.repos.some(r=>(decisionOf(r)||{}).attention>=.9);
   const items=[['all','All'],['recent','Active 30d'],...(hasAtt?[['attention','Needs attention']]:[]),...G.clusters.slice(0,7).map(c=>['cat:'+c.name,c.name])];
@@ -428,8 +449,8 @@ function openDrawer(r){
   <div class="sec">Decision model</div>${kv([['Category',`<span class="catline"><i class="dot" style="background:${CL[G.clusters.indexOf(cl)%CL.length]}"></i><b>${esc(cl.name)}</b></span><div class="muted" style="font-size:12.5px">${esc(cl.blurb||'')}</div>`],
       ...(decisionOf(r)?[['Confidence',Math.round(decisionOf(r).confidence*100)+'%'],['Maturity',esc(decisionOf(r).maturity)],['Needs attention',decisionOf(r).attention>=.9?'<span class="warn">Probably. Finish it, archive it or delete it.</span>':'No'],
       ['Also considered',Object.entries(decisionOf(r).probs||{}).filter(([k])=>k!==decisionOf(r).category).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([k,v])=>esc(k)+' '+Math.round(v*100)+'%').join(' · ')||'—']]:[])])}
-  <div class="sec">Related (${rel.length})</div>${rel.map(({o,e})=>`<div class="rel" onclick='pick(${JSON.stringify(o.full_name)})'><i class="dot" style="background:${EDGE[e.type][0]}"></i><b>${esc(o.name)}</b><small>${esc(e.why)}</small></div>`).join('')||'<div class="muted" style="font-size:13px">No relationships detected.</div>'}
-  <div class="row" style="margin-top:20px"><button class="btn primary" onclick='readInto(${JSON.stringify(r.full_name)})'>Read this repo</button><button class="btn" onclick='go("build",${JSON.stringify(r.full_name)})' ${r.write?'':'disabled title="needs write access"'}>Build a feature</button></div>
+  <div class="sec">Related (${rel.length})</div>${rel.slice(0,6).map(({o,e})=>`<div class="rel" onclick='pick(${JSON.stringify(o.full_name)})'><i class="dot" style="background:${EDGE[e.type][0]}"></i><b>${esc(o.name)}</b><small>${esc(e.why)}</small></div>`).join('')||'<div class="muted" style="font-size:13px">No relationships detected.</div>'}${rel.length>6?`<div class="muted" style="font-size:12.5px;margin-top:6px">+ ${rel.length-6} more</div>`:''}
+  <div class="row" style="margin-top:24px"><button class="btn primary" onclick='go("prs",${JSON.stringify(r.full_name)})'>Pull requests</button><button class="btn" onclick='readInto(${JSON.stringify(r.full_name)})'>Read report</button>${ME?`<button class="btn" onclick='go("build",${JSON.stringify(r.full_name)})'>${r.write?'Build a feature':'Fork & build'}</button>`:`<a class="btn" style="text-decoration:none" href="${SIGNIN}">Sign in to build</a>`}</div>
   <div id="detail" style="margin-top:18px"></div>`;
   $('#drawer').classList.add('open');
 }
@@ -443,21 +464,22 @@ async function readInto(full,elSel='#detail'){
 function makeGraph(cv,G){
   const ctx=cv.getContext('2d'),dpr=Math.min(devicePixelRatio||1,2);let W=0,H=0,alive=true,frames=0,alpha=1,sel=null,hover=null,drag=null,pan=null,filt=()=>true,cam={x:0,y:0,k:1};
   const idx={},nodes=G.repos.map((r,i)=>{const age=(Date.now()-new Date(r.pushed_at||0))/864e5;
-    const n={r,i,x:0,y:0,vx:0,vy:0,rad:Math.min(30,9+Math.sqrt(r.stars*5+r.size/1800+r.issues*2.5+1)*2.1),c:langColor(r.language),
+    const n={r,i,x:0,y:0,vx:0,vy:0,rad:Math.min(30,8+Math.log1p(r.stars*5+r.size/1800+r.issues*2.5)*2.6),c:langColor(r.language),
       cl:Math.max(0,G.clusters.findIndex(c=>c.id===G.assign[r.full_name])),fresh:age<14,dim:1};idx[r.full_name]=n;return n});
   const edges=G.edges.map(e=>({...e,a:idx[e.a],b:idx[e.b]})).filter(e=>e.a&&e.b);
   const nbr=n=>edges.filter(e=>e.a===n||e.b===n),geom=[];
+  const rank=new Map([...nodes].sort((a,b)=>b.rad-a.rad).map((n,i)=>[n,i]));const LABELS=Math.max(8,Math.round(14-nodes.length/12));
   const centers=[];
   function size(){const b=cv.parentElement.getBoundingClientRect();W=b.width;H=b.height;cv.width=W*dpr;cv.height=H*dpr;layoutCenters()}
-  function layoutCenters(){const n=G.clusters.length,R=Math.min(W,H)*(n>1?.40:0);centers.length=0;
+  function layoutCenters(){const n=G.clusters.length,R=Math.min(W,H)*(n>1?(nodes.length>40?.46:.40):0);centers.length=0;
     for(let i=0;i<n;i++){const a=i/n*Math.PI*2-Math.PI/2;centers.push({x:W/2+Math.cos(a)*R*1.7,y:H/2+Math.sin(a)*R})}
     nodes.forEach((nd,j)=>{if(!nd.x){const c=centers[nd.cl]||{x:W/2,y:H/2};nd.x=c.x+(Math.random()-.5)*120;nd.y=c.y+(Math.random()-.5)*120}})}
   size();
   const LEN={fork:60,same:70,name:105,topic:135,ai:150};
   function tick(){
-    for(const n of nodes){const c=centers[n.cl]||{x:W/2,y:H/2};n.vx+=(c.x-n.x)*.0105*(.3+alpha);n.vy+=(c.y-n.y)*.0105*(.3+alpha)}
+    for(const n of nodes){const c=centers[n.cl]||{x:W/2,y:H/2};n.vx+=(c.x-n.x)*.006*(.3+alpha);n.vy+=(c.y-n.y)*.006*(.3+alpha)}
     for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){const a=nodes[i],b=nodes[j];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;
-      const m=a.rad+b.rad+(a.cl===b.cl?26:120);if(d<m*2){const f=(m*2-d)*.016*alpha+(d<m?(m-d)*.05:0);dx/=d;dy/=d;a.vx-=dx*f;a.vy-=dy*f;b.vx+=dx*f;b.vy+=dy*f}}
+      const m=a.rad+b.rad+(a.cl===b.cl?34:120);if(d<m*2){const f=(m*2-d)*.02*alpha+(d<m?(m-d)*.12:0);dx/=d;dy/=d;a.vx-=dx*f;a.vy-=dy*f;b.vx+=dx*f;b.vy+=dy*f}}
     for(const e of edges){let dx=e.b.x-e.a.x,dy=e.b.y-e.a.y,d=Math.hypot(dx,dy)||1;const f=(d-(LEN[e.type]||120))*.012*e.w;dx/=d;dy/=d;e.a.vx+=dx*f;e.a.vy+=dy*f;e.b.vx-=dx*f;e.b.vy-=dy*f}
     for(const n of nodes){if(n===drag)continue;n.vx*=.82;n.vy*=.82;n.x+=n.vx;n.y+=n.vy}
     alpha=Math.max(.04,alpha*.992)}
@@ -480,7 +502,7 @@ function makeGraph(cv,G){
     // edges
     edges.forEach(e=>{const inc=f&&(e.a===f||e.b===f),dimmed=f&&!inc,col=EDGE[e.type][0],vis=Math.min(e.a.dim,e.b.dim);
       const mx=(e.a.x+e.b.x)/2,my=(e.a.y+e.b.y)/2,dx=e.b.x-e.a.x,dy=e.b.y-e.a.y,len=Math.hypot(dx,dy)||1,ox=-dy/len*len*.12,oy=dx/len*len*.12;
-      ctx.globalAlpha=(dimmed?.04:inc?.95:.3)*(.3+vis*.7);ctx.strokeStyle=col;ctx.lineWidth=(.8+e.w*1.3+(inc?1:0))/Math.sqrt(cam.k);
+      ctx.globalAlpha=(dimmed?.03:inc?.95:(nodes.length>40?.1:.3))*(.3+vis*.7);ctx.strokeStyle=col;ctx.lineWidth=(.8+e.w*1.3+(inc?1:0))/Math.sqrt(cam.k);
       ctx.setLineDash(e.type==='ai'?[5,5]:[]);ctx.beginPath();ctx.moveTo(e.a.x,e.a.y);ctx.quadraticCurveTo(mx+ox,my+oy,e.b.x,e.b.y);ctx.stroke();ctx.setLineDash([]);
       if(inc){const p=((t/1400)+e.a.i*.13)%1,q=1-p;ctx.fillStyle=col;ctx.beginPath();
         ctx.arc(q*q*e.a.x+2*q*p*(mx+ox)+p*p*e.b.x,q*q*e.a.y+2*q*p*(my+oy)+p*p*e.b.y,3/Math.sqrt(cam.k),0,7);ctx.fill();
@@ -496,7 +518,7 @@ function makeGraph(cv,G){
       if(!n.r.write){ctx.setLineDash([1,4]);ctx.strokeStyle='#ffc15a';ctx.lineWidth=1.6/cam.k;ctx.beginPath();ctx.arc(n.x,n.y,n.rad+5,0,7);ctx.stroke();ctx.setLineDash([])}
       if(n.r.private){ctx.setLineDash([3,3]);ctx.strokeStyle='#e8edf8';ctx.lineWidth=1.2/cam.k;ctx.beginPath();ctx.arc(n.x,n.y,n.rad+8,0,7);ctx.stroke();ctx.setLineDash([])}
       if(isSel){ctx.strokeStyle='#fff';ctx.lineWidth=2/cam.k;ctx.beginPath();ctx.arc(n.x,n.y,n.rad+3,0,7);ctx.stroke()}
-      if(isSel||isH||(f&&near.has(n))||n.rad*cam.k>15||cam.k>1.3){ctx.globalAlpha=Math.max(a,isSel||isH?1:0);ctx.fillStyle='#e8edf8';ctx.font=`600 ${12/Math.max(cam.k,.7)}px Inter,sans-serif`;ctx.textAlign='center';
+      if(isSel||isH||(f&&near.has(n))||rank.get(n)<LABELS||cam.k>2){ctx.globalAlpha=Math.max(a,isSel||isH?1:0);ctx.fillStyle='#e8edf8';ctx.font=`600 ${12/Math.max(cam.k,.7)}px Inter,sans-serif`;ctx.textAlign='center';
         ctx.fillText(n.r.name.length>20?n.r.name.slice(0,19)+'…':n.r.name,n.x,n.y+n.rad+16/Math.max(cam.k,.7))}
       ctx.globalAlpha=1});
   }
@@ -529,13 +551,41 @@ function readView(){
   <div class="row" style="margin-top:14px"><button class="btn primary" onclick="analyze('rin','rout')">Analyze</button></div></div><div id="rout" style="margin-top:18px;max-width:720px"></div>`;
 }
 
-/* ---------- build / review runs ---------- */
-function buildView(repo){
-  app.innerHTML=`<h2>Create a new feature</h2><p class="sub">Built test-first against the specs in the repo, then opened as a PR with the evidence.</p>
-  <div class="panel" style="max-width:740px"><label>GitHub repository — needs write access and a specs/ folder</label>${repoField('brepo',repo||SELECTED||'','rl2')}<datalist id="rl2"></datalist>
+/* ---------- pull requests: grouped, or paste a link ---------- */
+function prsView(repo){
+  app.innerHTML=`<h2>Pull requests</h2><p class="sub">Pick a repository to see its open PRs grouped by type and ranked by how much review they need, or paste an open PR link. No sign-in needed.</p>
+  <div class="panel" style="max-width:760px"><label style="margin-top:0">GitHub repository or pull request</label>
+  <div class="rf"><span>https://github.com/</span><input id="pin" placeholder="owner/repo   or   owner/repo/pull/123" value="${esc(repo||'')}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')prsGo()" onpaste="${pasteFix}"></div>
+  <div class="try">Try <button type="button" onclick="fillT('pin','open-telemetry/opentelemetry-python');prsGo()">open-telemetry/opentelemetry-python</button><button type="button" onclick="fillT('pin','Naveenaduri/tinyjwt');prsGo()">Naveenaduri/tinyjwt</button></div><div class="ferr" id="pinErr"></div>
+  <div class="row" style="margin-top:18px"><button class="btn primary" onclick="prsGo()">Show pull requests</button></div></div><div id="pout" style="margin-top:44px;max-width:900px"></div>`;
+  if(repo)prsGo();
+}
+async function prsGo(){
+  const t=parseTarget($('#pin').value),err=$('#pinErr'),o=$('#pout');err.textContent='';
+  if(!t.repo){err.textContent=t.owner?'Add the repository name: owner/repo':'Enter owner/repo, or an open PR link.';return}
+  if(t.pr)return analyze('pin','pout');
+  setCtx(t.repo);o.innerHTML=`<div class="loadingp"><div class="spin"></div>Reading the open PRs of ${esc(t.repo)}…</div>`;
+  try{o.innerHTML=prsHtml(await api(`/api/repo/${t.repo}/prs`))}catch(e){o.innerHTML='';err.textContent=e.message}
+}
+function prsHtml(d){
+  if(!d.total)return `<div class="muted" style="padding:24px 4px">${esc(d.repo)} has no open pull requests. You can still paste a PR link above.</div>`;
+  const pri=p=>{const x=p.decision;return x?`<span class="pill ${x.priority==='High'?'no':x.priority==='Low'?'':'cy'}">${esc(x.priority)} priority</span>`:'<span></span>'};
+  return `<div class="lbl" style="margin-bottom:26px">${d.total} open · grouped by type, ranked by review need${d.method==='decision-model'?' · SubQ Snap 1.1':''}</div>`+
+   d.groups.map(g=>`<div class="pgroup"><h4>${esc(g.name)}<span class="muted">${g.prs.length}</span></h4>${g.prs.map(p=>`<div class="prow"><b class="mono">#${p.number}</b><span class="pt">${esc(p.title)}${p.draft?' <span class="pill">draft</span>':''}<small class="muted">${esc(p.author)} · <span style="color:var(--green)">+${p.additions}</span> <span style="color:var(--red)">−${p.deletions}</span></small></span>${pri(p)}<button class="btn sm primary" onclick='startReview(${JSON.stringify(d.repo)},${p.number})'>Review</button></div>`).join('')}</div>`).join('');
+}
+
+/* ---------- build a feature (sign-in) ---------- */
+async function buildView(repo){
+  if(!ME){app.innerHTML=`<h2>Build a feature</h2><p class="sub">SpecGuard writes the tests first, implements until they pass, and opens a PR with the proof.</p>
+    <div class="panel" style="max-width:640px"><p style="margin:0 0 20px">Building opens a pull request in your name, so it needs a GitHub sign-in. Exploring and reviewing do not.</p><a class="btn primary" style="text-decoration:none" href="${SIGNIN}">Sign in with GitHub</a></div>`;return}
+  app.innerHTML=`<h2>Build a feature</h2><p class="sub">Written test-first, proven, then opened as a PR. No write access? SpecGuard forks the repo and opens the PR from your fork.</p>
+  <div class="panel" style="max-width:760px"><label style="margin-top:0">GitHub repository</label>${repoField('brepo',repo||SELECTED||'','rl2')}<datalist id="rl2"></datalist>
+  <div id="mine" class="try" style="margin-top:0"></div>
   <label>What should it do?</label><textarea id="bfeat" placeholder="e.g. add audience (aud) claim validation to decode"></textarea>
-  <div class="row" style="margin-top:18px"><button class="btn primary" id="bgo" onclick="startBuild()">Start build</button></div><div id="berr"></div></div>`;
-  loadGraph().then(g=>$('#rl2').innerHTML=g.repos.filter(r=>r.write).map(r=>`<option value="${esc(r.full_name)}">`).join('')).catch(()=>{});
+  <p class="muted" style="font-size:12.5px;margin:12px 0 0">If the repo has a specs/ folder, requirements are cited from it. Otherwise they are derived from your request.</p>
+  <div class="row" style="margin-top:20px"><button class="btn primary" id="bgo" onclick="startBuild()">Start build</button></div><div id="berr"></div></div>`;
+  loadGraph().then(g=>{const rs=[...g.repos].sort((a,b)=>(b.write-a.write)||(new Date(b.pushed_at)-new Date(a.pushed_at))).slice(0,8);
+    $('#mine').innerHTML='Your repos '+rs.map(r=>`<button type="button" onclick="fillT('brepo','${esc(r.full_name)}')">${esc(r.name)}</button>`).join('')}).catch(()=>{});
 }
 async function startBuild(){
   const repo=normRepo($('#brepo').value),feature=$('#bfeat').value.trim();if(!repo){$('#brepoErr').textContent='Enter it as owner/repo — for example Naveenaduri/tinyjwt';return}$('#brepoErr').textContent='';if(!feature){$('#berr').innerHTML='<div class="notice">Describe the feature you want.</div>';return}

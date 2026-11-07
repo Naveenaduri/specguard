@@ -114,3 +114,26 @@ def test_classify_repos_raises_if_everything_fails(monkeypatch):
     monkeypatch.setattr(graph.llm, "subq_decide", lambda s, q: (_ for _ in ()).throw(RuntimeError("down")))
     with pytest.raises(RuntimeError):
         graph.classify_repos([R("me/a")], [{"name": "Web", "description": "sites"}, {"name": "Agents", "description": "llm"}])
+
+
+def test_a_word_shared_by_most_repos_does_not_create_name_links():
+    """Every OpenTelemetry repo contains 'opentelemetry'; that must not link them all together."""
+    repos = [R(f"o/opentelemetry-{x}") for x in ("go", "java", "php", "ruby", "erlang", "dotnet")] + [R("o/community"), R("o/weaver")]
+    e = graph.deterministic_edges(repos)
+    assert [x for x in e if x["type"] == "name"] == []
+
+
+def test_a_rare_shared_word_still_links_repos():
+    repos = [R("o/hack-stripe"), R("o/hack-auth")] + [R(f"o/misc{i}") for i in range(10)]
+    e = graph.deterministic_edges(repos)
+    assert any(x["type"] == "name" and {x["a"], x["b"]} == {"o/hack-stripe", "o/hack-auth"} for x in e)
+
+
+def test_a_topic_carried_by_most_repos_does_not_link_them():
+    repos = [R(f"o/lib{i}x", topics=["opentelemetry"]) for i in range(9)]
+    assert [x for x in graph.deterministic_edges(repos) if x["type"] == "topic"] == []
+
+
+def test_a_rare_topic_still_links_repos():
+    repos = [R("o/aaa", topics=["observability"]), R("o/bbb", topics=["observability"])] + [R(f"o/zz{i}k") for i in range(10)]
+    assert any(x["type"] == "topic" for x in graph.deterministic_edges(repos))

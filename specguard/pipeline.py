@@ -1,6 +1,8 @@
 """Build + review pipelines. Every stage goes through events.emit()."""
+import itertools
 import re
 import threading
+import time
 from pathlib import Path
 
 from . import events, gh, llm, review, rubric, sandbox, spec, testgen
@@ -205,18 +207,32 @@ def _run_build(E, run_id, repo, feature, token, user, auto, merge, dry=False):
     g = gh.client(token)
     E("ticket", "done", "Request received", feature, {"repo": repo})
     acc = gh.access(g, repo)
-    sc = review.scope_check([], write=acc["write"], need_write=True)
-    if not sc["ok"]:
-        E("ticket", "failed", sc["summary"], "Link an identity with write access, then retry")
+    if not acc["read"]:
+        E("ticket", "failed", "Scope: ❌ your GitHub account cannot read this repository")
         return
+    forked = not acc["write"]  # no write access: work in a fork and open the PR upstream
+    push_repo, head_owner = repo, None
+    if forked:
+        E("ticket", "progress", "No write access here, so SpecGuard will fork it to your account", "The PR opens from your fork")
+        me = g.get_user()
+        fk = me.create_fork(g.get_repo(repo))
+        for _ in range(40):  # forks are created asynchronously
+            try:
+                if list(itertools.islice(fk.get_commits(), 1)):
+                    break
+            except Exception:  # noqa: BLE001
+                pass
+            time.sleep(3)
+        push_repo, head_owner = fk.full_name, me.login
     work = gh.clone(repo, token, WORK / run_id / "repo")
     base_commit = gh.git(work, "rev-parse", "HEAD").strip()
     branch = f"feat/{slugify(user or 'user', 12)}-{slugify(feature)}"
     gh.git(work, "checkout", "-q", "-b", branch)
     spec_text = spec.load_spec(work)
-    if not spec_text:
-        E("spec", "failed", "No spec found", "Add markdown spec files under specs/ in the repo")
-        return
+    has_specs = bool(spec_text)
+    if not has_specs:  # requirements come from the user's own words instead of a standard
+        spec_text = f"## Feature request\n{feature}\n"
+        E("spec", "progress", "No specs/ folder in this repo", "Requirements will be derived from your request instead of a standard")
 
     # --- spec (human gate) ---
     E("spec", "started", "Reading spec, selecting clauses", "")
@@ -239,13 +255,16 @@ def _run_build(E, run_id, repo, feature, token, user, auto, merge, dry=False):
     E("plan", "done", "Plan ready", "\n".join(f"• {b}" for b in plan.get("bullets", [])[:8]), {"files": plan.get("files", [])})
 
     # --- round 1 ---
-    all_clauses = spec.extract_all_clauses(spec_text)
+    all_clauses = spec.extract_all_clauses(spec_text) if has_specs else []
     ok, rows, files, _ = _tdd_cycle(E, work, feature, clauses, plan, 1)
     if not ok:
         E("pr", "failed", "No green implementation; stopping", "")
         return
     all_rows = list(rows)
-    for rnd in range(2):  # inspect -> feed violations back (max 2 rounds)
+    scope = review.scope_check(gh.git(work, "diff", "--name-only", base_commit).split())
+    if not has_specs:
+        E("inspect", "done", "Inspection skipped (no specs/ folder)", "Open the PR in SpecGuard's review to get the rubric review")
+    for rnd in range(2 if has_specs else 0):  # inspect -> feed violations back (max 2 rounds)
         scope, result = _inspect(E, work, spec_text, all_clauses, clauses, base_commit)
         E("inspect", "done" if not result["violations"] else "failed",
           "Inspection clean" if not result["violations"] else f"{len(result['violations'])} violation(s) proven",
@@ -275,17 +294,18 @@ def _run_build(E, run_id, repo, feature, token, user, auto, merge, dry=False):
         return
     # --- PR ---
     E("pr", "started", "Opening pull request", branch)
-    gh.push(work, repo, token, branch, force=True)
+    gh.push(work, push_repo, token, branch, force=True)
     run = events.get_run(run_id) or {}
     body = (f"## SpecGuard evidence — {feature}\n\n{evidence_table(all_rows)}\n"
             f"{scope['summary']}\n\nRun: {run_id}\n")
     gr = g.get_repo(repo)
-    existing = list(gr.get_pulls(state="open", head=f"{gr.owner.login}:{branch}"))
+    head_ref = f"{head_owner}:{branch}" if forked else branch
+    existing = list(gr.get_pulls(state="open", head=f"{head_owner or gr.owner.login}:{branch}"))
     if existing:  # a retry of the same feature: update the open PR instead of failing
         pr = existing[0]
         pr.edit(body=body)
     else:
-        pr = gr.create_pull(title=f"feat: {feature[:70]}", body=body, head=branch, base=acc["default_branch"])
+        pr = gr.create_pull(title=f"feat: {feature[:70]}", body=body, head=head_ref, base=acc["default_branch"])
     events.update_run(run_id, pr_url=pr.html_url)
     E("pr", "done", f"PR #{pr.number} opened", pr.html_url, {"pr_number": pr.number, "pr_url": pr.html_url})
 
@@ -296,7 +316,9 @@ def _run_build(E, run_id, repo, feature, token, user, auto, merge, dry=False):
         d = GATES.wait(run_id, "review", auto)
         E("human_review", "done", f"Decision: {d['decision']}", d["text"], {"decision": d["decision"], "text": d["text"]})
         if d["decision"] == "approve":
-            if merge:
+            if forked:
+                E("merged", "done", "Approved. The PR is open upstream and the maintainers decide on merging", pr.html_url)
+            elif merge:
                 pr.merge(merge_method="squash")
                 E("merged", "done", "Squash-merged ✅", pr.html_url)
             events.update_run(run_id, status="done")
@@ -324,7 +346,7 @@ def _run_build(E, run_id, repo, feature, token, user, auto, merge, dry=False):
             return
         gh.git(work, "add", "-A")
         gh.git(work, "commit", "-q", "-m", f"feat: address review feedback (round {rnd})")
-        gh.push(work, repo, token, branch)
+        gh.push(work, push_repo, token, branch)
         all_rows += rows
         pr.edit(body=f"## SpecGuard evidence — {feature}\n\n{evidence_table(all_rows)}\nRun: {run_id}\n")
         pr.create_issue_comment(f"### Round {rnd} evidence\n\n{evidence_table(rows)}")
