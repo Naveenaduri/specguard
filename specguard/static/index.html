@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SpecGuard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+<style>
+:root{
+  --bg:#0a0e16; --bg2:#101624; --card:#141c2e; --line:#243049; --text:#e8edf7; --muted:#8b97b1;
+  --accent:#7c6cff; --green:#2ee6a6; --red:#ff4d6d; --amber:#ffb454; --blue:#4db8ff;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){--bg:#f4f6fb;--bg2:#fff;--card:#fff;--line:#dbe1ee;--text:#121a2b;--muted:#5d6985;}
+}
+*{box-sizing:border-box} html,body{margin:0;height:100%}
+body{background:radial-gradient(1200px 600px at 80% -10%,#1a2347 0%,transparent 60%),var(--bg);color:var(--text);
+  font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--blue)} button{font:inherit;cursor:pointer}
+header{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20}
+.logo{font-weight:800;font-size:20px;letter-spacing:.2px;display:flex;gap:8px;align-items:center;cursor:pointer}
+.logo b{background:linear-gradient(90deg,var(--accent),var(--green));-webkit-background-clip:text;background-clip:text;color:transparent}
+.tag{color:var(--muted);font-size:13px} .sp{flex:1}
+.chip{display:flex;align-items:center;gap:8px;padding:4px 10px 4px 4px;border:1px solid var(--line);border-radius:99px;background:var(--bg2)}
+.chip img{width:26px;height:26px;border-radius:50%}
+.btn{border:1px solid var(--line);background:var(--bg2);color:var(--text);padding:9px 16px;border-radius:10px;font-weight:600;transition:.15s}
+.btn:hover{border-color:var(--accent);transform:translateY(-1px)}
+.btn.primary{background:linear-gradient(135deg,var(--accent),#5a8bff);border:0;color:#fff}
+.btn.good{background:var(--green);border:0;color:#04281c}
+.btn.bad{background:var(--red);border:0;color:#fff}
+.btn.ghost{background:transparent} .btn:disabled{opacity:.5;cursor:default;transform:none}
+main{max-width:1180px;margin:0 auto;padding:28px 24px 120px}
+.hero{text-align:center;padding:64px 0 24px}
+.hero h1{font-size:44px;line-height:1.1;margin:0 0 14px;letter-spacing:-.5px}
+.hero p{color:var(--muted);max-width:620px;margin:0 auto 28px;font-size:17px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:26px}
+.action{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:26px;text-align:left;color:var(--text);transition:.2s;position:relative;overflow:hidden}
+.action:hover{transform:translateY(-4px);border-color:var(--accent);box-shadow:0 14px 40px -18px var(--accent)}
+.action .ic{font-size:30px} .action h3{margin:10px 0 6px;font-size:20px} .action p{margin:0;color:var(--muted);font-size:14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+h2{margin:0 0 4px;font-size:24px} .sub{color:var(--muted);margin:0 0 18px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input,textarea,select{width:100%;background:var(--bg2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:11px 13px;font:inherit}
+input:focus,textarea:focus{outline:2px solid var(--accent);border-color:transparent}
+textarea{min-height:84px;resize:vertical}
+label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;display:block;margin:12px 0 6px}
+/* explore */
+.explore{display:grid;grid-template-columns:1fr 320px;gap:18px}
+@media(max-width:900px){.explore{grid-template-columns:1fr}}
+#graphWrap{position:relative;background:radial-gradient(600px 300px at 50% 40%,#16204a55,transparent),var(--bg2);border:1px solid var(--line);border-radius:18px;height:560px;overflow:hidden}
+canvas{width:100%;height:100%;display:block}
+.legend{position:absolute;left:14px;bottom:12px;display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);max-width:70%}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+.hint{position:absolute;right:14px;top:12px;font-size:12px;color:var(--muted);text-align:right}
+.tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px;display:none;z-index:5;max-width:260px}
+.sidebar h3{margin:0 0 4px} .stat{display:flex;gap:14px;color:var(--muted);font-size:13px;margin:6px 0 12px}
+.pill{font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.pill.ok{color:var(--green);border-color:var(--green)} .pill.no{color:var(--amber);border-color:var(--amber)}
+pre.sum{white-space:pre-wrap;font:13px/1.55 inherit;color:var(--text);background:var(--bg2);border-radius:10px;padding:12px;margin:10px 0}
+.prs{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.prs div{display:flex;gap:8px;align-items:center;justify-content:space-between;background:var(--bg2);padding:7px 10px;border-radius:9px;font-size:13px}
+/* run */
+.rail{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 18px}
+.st{display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:99px;border:1px solid var(--line);background:var(--bg2);font-size:13px;color:var(--muted);transition:.3s}
+.st.active{color:var(--text);border-color:var(--accent);box-shadow:0 0 0 3px #7c6cff33;animation:pulse 1.4s infinite}
+.st.done{color:var(--green);border-color:#2ee6a655} .st.failed{color:var(--red);border-color:var(--red)}
+.st.wait{color:var(--amber);border-color:var(--amber)}
+@keyframes pulse{50%{box-shadow:0 0 0 7px #7c6cff10}}
+.feed{display:flex;flex-direction:column;gap:12px}
+.ev{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;animation:in .35s ease}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+.ev .t{font-weight:650;display:flex;gap:8px;align-items:center} .ev .d{color:var(--muted);font-size:13px;white-space:pre-wrap;margin-top:4px}
+.ev.small{padding:8px 14px;background:transparent;border-style:dashed} .ev.small .t{font-weight:500;color:var(--muted);font-size:13px}
+.clause{border-left:3px solid var(--accent);background:var(--bg2);border-radius:8px;padding:9px 12px;margin-top:8px;font-size:13px}
+.clause q{display:block;font-style:italic;margin:3px 0} .clause .meta{color:var(--muted);font-size:12px}
+.lv{font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px;background:#7c6cff33;color:var(--accent);margin-right:6px}
+.lv.MUST,.lv.MUSTNOT{background:#ff4d6d22;color:var(--red)} .lv.SHOULD{background:#ffb45422;color:var(--amber)}
+.red{border-color:var(--red);background:linear-gradient(180deg,#ff4d6d14,var(--card));animation:in .35s ease,flash 1.1s ease 1}
+@keyframes flash{0%,60%{box-shadow:0 0 0 0 #ff4d6d66}30%{box-shadow:0 0 0 12px #ff4d6d00}}
+.violation{border:2px solid var(--red);background:linear-gradient(180deg,#ff4d6d22,#ff4d6d08);border-radius:16px;padding:18px;animation:in .4s ease,shake .5s ease 1}
+@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+.violation h4{margin:0 0 6px;color:var(--red);font-size:17px;letter-spacing:.3px}
+.violation q{display:block;font-size:15px;margin:6px 0 10px}
+code,.mono{font-family:var(--mono);font-size:12px} .out{background:#0006;border-radius:8px;padding:10px;color:#ffc2cd;overflow:auto;max-height:160px;white-space:pre-wrap;font-family:var(--mono);font-size:12px;margin:6px 0}
+.green{border-color:var(--green);background:linear-gradient(180deg,#2ee6a615,var(--card))}
+.flip{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-top:8px;font-size:12px}
+.flip .b{background:#ff4d6d18;border:1px solid #ff4d6d55;color:#ffb3c0;border-radius:8px;padding:7px 9px;font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.flip .a{background:#2ee6a618;border:1px solid #2ee6a655;color:var(--green);border-radius:8px;padding:7px 9px;font-family:var(--mono)}
+.gate{border:1px solid var(--amber);background:#ffb45410} .gate textarea{margin-top:10px}
+.diff{background:#0007;border-radius:8px;padding:10px;font-family:var(--mono);font-size:12px;overflow:auto;max-height:200px;white-space:pre}
+.diff .p{color:var(--green)} .diff .m{color:var(--red)}
+.big{font-size:22px;font-weight:800} .center{text-align:center}
+/* chat */
+#chatBtn{position:fixed;right:22px;bottom:22px;z-index:30;width:56px;height:56px;border-radius:50%;border:0;background:linear-gradient(135deg,var(--accent),var(--green));font-size:24px;box-shadow:0 12px 30px -8px #7c6cffaa}
+#chat{position:fixed;right:22px;bottom:90px;width:370px;max-width:calc(100vw - 44px);height:480px;z-index:30;display:none;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 20px 60px -20px #000}
+#chat.open{display:flex} #chat header{position:static;border-radius:18px 18px 0 0;padding:12px 16px;background:var(--bg2)}
+#msgs{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.m{max-width:88%;padding:9px 12px;border-radius:14px;font-size:14px;white-space:pre-wrap}
+.m.u{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+.m.a{align-self:flex-start;background:var(--bg2);border-bottom-left-radius:4px}
+#chat form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}
+.hide{display:none!important} .muted{color:var(--muted)}
+.notice{background:#ffb45414;border:1px solid var(--amber);border-radius:12px;padding:12px 14px;color:var(--amber);font-size:14px;margin-top:16px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo" onclick="go('home')">🛡️ <b>SpecGuard</b></div>
+  <span class="tag hide" id="tagline">Don't review AI code — review its proof.</span>
+  <div class="sp"></div>
+  <div class="chip hide" id="userChip"><img id="avatar" alt=""><span id="uname"></span><button class="btn ghost" style="padding:3px 10px" onclick="logout()">Sign out</button></div>
+</header>
+<main id="app"></main>
+
+<button id="chatBtn" class="hide" onclick="toggleChat()" aria-label="Chat">💬</button>
+<div id="chat">
+  <header><b>Ask SpecGuard</b><span class="sp"></span><span class="muted" id="chatCtx" style="font-size:12px"></span><button class="btn ghost" style="padding:2px 9px" onclick="toggleChat()">✕</button></header>
+  <div id="msgs"></div>
+  <form onsubmit="sendChat(event)"><input id="chatIn" placeholder="Ask about a repo, a run, or how this works…" autocomplete="off"><button class="btn primary">Send</button></form>
+</div>
+
+<script>
+const $=s=>document.querySelector(s), app=$('#app');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let ME=null, REPOS=[], SELECTED=null, ES=null, CHAT=[];
+const api=async(u,o)=>{const r=await fetch(u,o&&o.body?{...o,headers:{'Content-Type':'application/json'}}:o);if(r.status===401)throw new Error('401');if(!r.ok)throw new Error((await r.json().catch(()=>({detail:r.statusText}))).detail||r.statusText);return r.json()};
+const post=(u,b)=>api(u,{method:'POST',body:JSON.stringify(b)});
+
+async function init(){
+  try{ME=await api('/api/me')}catch(e){ME=null}
+  document.querySelector('#userChip').classList.toggle('hide',!ME);
+  $('#tagline').classList.toggle('hide',!ME);$('#chatBtn').classList.toggle('hide',!ME);
+  if(ME){$('#avatar').src=ME.avatar;$('#uname').textContent=ME.login;go('home')}else login();
+}
+async function login(){
+  const c=await api('/auth/config');
+  app.innerHTML=`<div class="hero"><h1>Don't review AI code.<br><b style="background:linear-gradient(90deg,var(--accent),var(--green));-webkit-background-clip:text;color:transparent">Review its proof.</b></h1>
+  <p>SpecGuard turns a feature request into cited spec clauses, writes the tests first, implements until they pass, and reviews any PR by running tests — never by guessing.</p>
+  ${c.github?`<a class="btn primary" style="display:inline-block;text-decoration:none;font-size:16px;padding:13px 26px" href="/auth/github">Sign in with GitHub</a>`:
+   `<div class="notice">GitHub OAuth is not configured on this server yet (set GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET).</div>`}
+  ${c.local?`<p style="margin-top:18px"><a href="/auth/local" class="muted">Local dev sign-in (uses this machine's gh CLI)</a></p>`:''}</div>`;
+}
+async function logout(){await post('/auth/logout',{});location.reload()}
+
+function go(v,arg){
+  if(ES){ES.close();ES=null}
+  ({home:home,explore:explore,read:readView,build:buildView}[v]||home)(arg);
+}
+function home(){
+  app.innerHTML=`<div class="hero"><h1>What are we building, ${esc(ME.name.split(' ')[0])}?</h1>
+  <p>Everything runs against the specs in your repos and shows its work as it goes.</p></div>
+  <div class="grid3">
+   <button class="action" onclick="go('build')"><div class="ic">✨</div><h3>Create a new feature</h3><p>Describe it. SpecGuard cites the clauses, writes failing tests, makes them pass, and opens a PR with the evidence.</p></button>
+   <button class="action" onclick="go('read')"><div class="ic">📖</div><h3>Read a repo</h3><p>Highlights, health, open PRs — and review any PR with proof-based checks.</p></button>
+   <button class="action" onclick="go('explore')"><div class="ic">🌌</div><h3>Explore my repos</h3><p>Every repo you can access as a living constellation. Size is activity, glow is write access.</p></button>
+  </div><div id="recent" style="margin-top:30px"></div>`;
+  api('/api/runs').then(rs=>{if(!rs.length)return;$('#recent').innerHTML=`<h2 style="font-size:18px">Recent runs</h2><div class="prs">`+rs.slice(0,6).map(r=>`<div><span>${r.kind==='build'?'✨':'🔎'} ${esc(r.feature)} <span class="muted">· ${esc(r.repo)}</span></span><span class="row"><span class="pill ${r.status==='done'?'ok':''}">${esc(r.status)}</span><button class="btn" style="padding:4px 10px" onclick='openRun(${JSON.stringify(r.run_id)},${JSON.stringify(r.kind)})'>Open</button></span></div>`).join('')+`</div>`}).catch(()=>{});
+}
+async function loadRepos(){if(!REPOS.length)REPOS=await api('/api/repos');return REPOS}
+function setCtx(r){SELECTED=r;$('#chatCtx').textContent=r||''}
+
+/* ---------- explore: constellation graph ---------- */
+const PALETTE=['#7c6cff','#2ee6a6','#4db8ff','#ffb454','#ff6fb5','#a3e635','#f97316','#22d3ee','#c084fc'];
+function colorFor(lang,map){if(!lang)return '#6b7690';if(!map[lang])map[lang]=PALETTE[Object.keys(map).length%PALETTE.length];return map[lang]}
+async function explore(){
+  app.innerHTML=`<h2>Your repo constellation</h2><p class="sub">Node size = stars, size and open issues · colour = language · green ring = you can write · dashed = private · brighter = pushed recently.</p>
+  <div class="explore"><div id="graphWrap"><canvas id="cv"></canvas><div class="tip" id="tip"></div><div class="legend" id="legend"></div><div class="hint">drag a node · click to inspect</div></div>
+  <div class="panel sidebar" id="side"><p class="muted">Loading repos…</p></div></div>`;
+  try{await loadRepos()}catch(e){app.innerHTML=`<div class="notice">Could not load repos: ${esc(e.message)}</div>`;return}
+  drawGraph(REPOS);
+  $('#side').innerHTML=`<h3>${REPOS.length} repositories</h3><p class="muted">Click a node to read it, build a feature on it, or review its PRs.</p>`;
+}
+function drawGraph(repos){
+  const cv=$('#cv'),wrap=$('#graphWrap'),ctx=cv.getContext('2d'),dpr=devicePixelRatio||1,langMap={};
+  function size(){cv.width=wrap.clientWidth*dpr;cv.height=wrap.clientHeight*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}size();
+  const W=()=>wrap.clientWidth,H=()=>wrap.clientHeight,now=Date.now();
+  const nodes=repos.map((r,i)=>{const age=(now-new Date(r.pushed_at||0))/864e5;
+    const rad=Math.min(34,12+Math.sqrt(r.stars*4+r.size/1500+r.issues*3+1)*2.2);
+    return{r,x:W()/2+Math.cos(i)*160+Math.random()*30,y:H()/2+Math.sin(i)*120+Math.random()*30,vx:0,vy:0,rad,c:colorFor(r.language,langMap),
+      alpha:Math.max(.45,1-age/400)}});
+  const links=[];for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){const a=nodes[i].r,b=nodes[j].r;
+    if(a.language&&a.language===b.language)links.push([i,j,.5]);else if(a.owner===b.owner&&nodes.length<25)links.push([i,j,.25])}
+  let drag=null,hover=null,frames=0;
+  function step(){
+    for(const n of nodes){n.vx+=(W()/2-n.x)*.0009;n.vy+=(H()/2-n.y)*.0012}
+    for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){const a=nodes[i],b=nodes[j];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;const m=a.rad+b.rad+16;
+      if(d<m*2.2){const f=(m*2.2-d)*.012;dx/=d;dy/=d;a.vx-=dx*f;a.vy-=dy*f;b.vx+=dx*f;b.vy+=dy*f}}
+    for(const [i,j,k] of links){const a=nodes[i],b=nodes[j];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;const f=(d-150)*.0016*k;a.vx+=dx/d*f;a.vy+=dy/d*f;b.vx-=dx/d*f;b.vy-=dy/d*f}
+    for(const n of nodes){if(n===drag)continue;n.vx*=.86;n.vy*=.86;n.x+=n.vx;n.y+=n.vy;n.x=Math.max(n.rad,Math.min(W()-n.rad,n.x));n.y=Math.max(n.rad,Math.min(H()-n.rad,n.y))}
+  }
+  function paint(t){
+    ctx.clearRect(0,0,W(),H());
+    ctx.lineWidth=1;for(const [i,j,k] of links){ctx.strokeStyle=`rgba(124,108,255,${.07+k*.1})`;ctx.beginPath();ctx.moveTo(nodes[i].x,nodes[i].y);ctx.lineTo(nodes[j].x,nodes[j].y);ctx.stroke()}
+    for(const n of nodes){const sel=SELECTED===n.r.full_name,hov=hover===n;
+      const g=ctx.createRadialGradient(n.x,n.y,n.rad*.2,n.x,n.y,n.rad*(hov||sel?2.6:2));g.addColorStop(0,n.c+'55');g.addColorStop(1,n.c+'00');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(n.x,n.y,n.rad*(hov||sel?2.6:2),0,7);ctx.fill();
+      ctx.globalAlpha=n.alpha;ctx.fillStyle=n.c;ctx.beginPath();ctx.arc(n.x,n.y,n.rad,0,7);ctx.fill();ctx.globalAlpha=1;
+      if(n.r.write){const pulse=1+Math.sin(t/500+n.x)*.08;ctx.strokeStyle='#2ee6a6';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(n.x,n.y,(n.rad+5)*pulse,0,7);ctx.stroke()}
+      if(n.r.private){ctx.setLineDash([4,4]);ctx.strokeStyle='#e8edf7';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(n.x,n.y,n.rad+10,0,7);ctx.stroke();ctx.setLineDash([])}
+      if(sel){ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(n.x,n.y,n.rad+3,0,7);ctx.stroke()}
+      ctx.fillStyle=getComputedStyle(document.body).color;ctx.font='600 11.5px system-ui';ctx.textAlign='center';ctx.fillText(n.r.name.length>18?n.r.name.slice(0,17)+'…':n.r.name,n.x,n.y+n.rad+20)}
+  }
+  let raf;function loop(t){if(!document.body.contains(cv))return;if(frames++<400||drag)step();paint(t);raf=requestAnimationFrame(loop)}loop(0);
+  const at=(e)=>{const b=cv.getBoundingClientRect(),x=e.clientX-b.left,y=e.clientY-b.top;return[x,y,nodes.slice().reverse().find(n=>Math.hypot(n.x-x,n.y-y)<=n.rad+6)]};
+  cv.onmousemove=e=>{const [x,y,n]=at(e);hover=n||null;cv.style.cursor=n?'pointer':'default';const tip=$('#tip');
+    if(drag){drag.x=x;drag.y=y;frames=0}
+    if(n){tip.style.display='block';tip.style.left=Math.min(x+14,W()-270)+'px';tip.style.top=y+14+'px';
+      tip.innerHTML=`<b>${esc(n.r.full_name)}</b><br><span class="muted">${esc(n.r.description||'no description')}</span><br>${esc(n.r.language||'—')} · ★ ${n.r.stars} · ${n.r.issues} open issues${n.r.write?' · ✍️ write':''}`}else tip.style.display='none'};
+  cv.onmousedown=e=>{const [,,n]=at(e);drag=n||null;cv._moved=false};
+  cv.onmouseup=e=>{const n=drag;drag=null;if(n&&!cv._moved)selectRepo(n.r)};
+  cv.addEventListener('mousemove',()=>cv._moved=true);
+  $('#legend').innerHTML=Object.entries(langMap).map(([l,c])=>`<span><i style="background:${c}"></i>${esc(l)}</span>`).join('');
+  addEventListener('resize',size);
+}
+async function selectRepo(r){
+  setCtx(r.full_name);const s=$('#side');
+  s.innerHTML=`<h3>${esc(r.full_name)}</h3><div class="stat"><span>★ ${r.stars}</span><span>${esc(r.language||'—')}</span><span>${r.private?'🔒 private':'public'}</span></div><p class="muted">Reading repo…</p>`;
+  try{await renderRepo(s,r.full_name)}catch(e){s.innerHTML+=`<div class="notice">${esc(e.message)}</div>`}
+}
+async function renderRepo(el,full){
+  const h=await api('/api/repo/'+full);
+  el.innerHTML=`<h3>${esc(full)}</h3>
+  <div class="row" style="margin:6px 0 10px"><span class="pill ${h.access.write?'ok':'no'}">${h.access.write?'write access':'read only'}</span>
+   <span class="pill ${h.has_specs?'ok':'no'}">${h.has_specs?'specs/ found':'no specs/ folder'}</span><span class="pill ${h.has_tests?'ok':'no'}">${h.has_tests?'tests found':'no tests'}</span></div>
+  <pre class="sum">${esc(h.summary)}</pre>
+  <div class="muted" style="font-size:12px">Languages: ${Object.keys(h.languages).map(esc).join(', ')||'—'}</div>
+  <h3 style="margin-top:14px;font-size:15px">Recent commits</h3><div class="prs">${h.commits.slice(0,4).map(c=>`<div><span class="mono">${esc(c.sha)}</span><span style="flex:1;margin-left:8px">${esc(c.msg)}</span></div>`).join('')}</div>
+  <h3 style="margin-top:14px;font-size:15px">Open PRs (${h.prs.length})</h3><div class="prs">${h.prs.map(p=>`<div><span>#${p.number} ${esc(p.title)}</span><button class="btn" style="padding:4px 10px" onclick='startReview(${JSON.stringify(full)},${p.number})' ${h.has_specs?'':'disabled title="needs specs/"'}>Review</button></div>`).join('')||'<span class="muted">none</span>'}</div>
+  <div class="row" style="margin-top:14px"><button class="btn primary" onclick='go("build",${JSON.stringify(full)})' ${h.access.write&&h.has_specs?'':'disabled'}>✨ Build a feature</button></div>
+  ${h.access.write&&h.has_specs?'':'<p class="muted" style="font-size:12px">Build needs write access and a specs/ folder.</p>'}`;
+}
+async function readView(){
+  app.innerHTML=`<h2>Read a repo</h2><p class="sub">Pick one of your repos, or type owner/name.</p><div class="panel" style="max-width:640px"><label>Repository</label><input id="rin" list="rl" placeholder="owner/name"><datalist id="rl"></datalist><div class="row" style="margin-top:14px"><button class="btn primary" onclick="doRead()">Read it</button></div></div><div class="panel hide" id="rout" style="margin-top:18px;max-width:640px"></div>`;
+  loadRepos().then(rs=>$('#rl').innerHTML=rs.map(r=>`<option value="${esc(r.full_name)}">`).join('')).catch(()=>{});
+}
+async function doRead(){const v=$('#rin').value.trim();if(!v)return;setCtx(v);const o=$('#rout');o.classList.remove('hide');o.innerHTML='<p class="muted">Reading…</p>';try{await renderRepo(o,v.includes('/')?v:ME.login+'/'+v)}catch(e){o.innerHTML=`<div class="notice">${esc(e.message)}</div>`}}
+
+/* ---------- build / review runs ---------- */
+function buildView(repo){
+  app.innerHTML=`<h2>Create a new feature</h2><p class="sub">SpecGuard builds it test-first against the specs in the repo, then opens a PR with the evidence.</p>
+  <div class="panel" style="max-width:720px"><label>Repository (needs write access and a specs/ folder)</label><input id="brepo" list="rl2" value="${esc(repo||SELECTED||'')}" placeholder="owner/name"><datalist id="rl2"></datalist>
+  <label>What should it do?</label><textarea id="bfeat" placeholder="e.g. add audience (aud) claim validation to decode"></textarea>
+  <div class="row" style="margin-top:14px"><button class="btn primary" id="bgo" onclick="startBuild()">Start build</button></div><div id="berr"></div></div>`;
+  loadRepos().then(rs=>$('#rl2').innerHTML=rs.filter(r=>r.write).map(r=>`<option value="${esc(r.full_name)}">`).join('')).catch(()=>{});
+}
+async function startBuild(){
+  const repo=$('#brepo').value.trim(),feature=$('#bfeat').value.trim();if(!repo||!feature){$('#berr').innerHTML='<div class="notice">Pick a repo and describe the feature.</div>';return}
+  $('#bgo').disabled=true;try{const r=await post('/api/build',{repo,feature});openRun(r.run_id,'build')}catch(e){$('#berr').innerHTML=`<div class="notice">${esc(e.message)}</div>`;$('#bgo').disabled=false}
+}
+async function startReview(repo,pr){try{const r=await post('/api/review',{repo,pr,comment:false});openRun(r.run_id,'review')}catch(e){alert(e.message)}}
+
+const STAGES={build:[['ticket','🧾','Request'],['spec','📜','Spec'],['plan','🥣','Plan'],['tests_red','🔴','Tests red'],['implement','🔥','Implement'],['tests_green','🟢','Green'],['inspect','🕵️','Inspect'],['pr','🍽️','PR'],['human_review','💬','Review'],['merged','🔔','Merged']],
+ review:[['received','📥','Received'],['map_clauses','🗺️','Map clauses'],['generate_tests','🧪','Generate'],['run_tests','▶️','Run'],['verdict','⚖️','Verdict'],['comment','💬','Comment']]};
+async function openRun(id,kind){
+  if(ES){ES.close()}
+  const info=await api('/api/runs/'+id);kind=info.run.kind;
+  app.innerHTML=`<h2>${kind==='build'?'✨ '+esc(info.run.feature):'🔎 Review '+esc(info.run.feature)}</h2><p class="sub">${esc(info.run.repo)} · run ${esc(id)}</p>
+  <div class="rail" id="rail">${STAGES[kind].map(([k,i,l])=>`<span class="st" data-s="${k}">${i} ${l}</span>`).join('')}</div><div class="feed" id="feed"></div>`;
+  const ctx={clauses:{},id};
+  ES=new EventSource('/api/runs/'+id+'/stream');
+  ES.onmessage=m=>render(JSON.parse(m.data),ctx);
+  ES.addEventListener('end',()=>{ES.close();ES=null});
+}
+function rail(e){
+  const el=document.querySelector(`.st[data-s="${e.stage}"]`);if(!el)return;
+  const prev=[...document.querySelectorAll('.st')];const idx=prev.indexOf(el);prev.slice(0,idx).forEach(p=>{if(!p.classList.contains('failed'))p.className='st done'});
+  el.className='st '+({started:'active',progress:'active',done:'done',failed:'failed',waiting_human:'wait'}[e.status]||'active');
+}
+function clauseHtml(c){return `<div class="clause"><span class="lv ${esc((c.level||'').replace(' ',''))}">${esc(c.level)}</span><b>${esc(c.id)}</b> <span class="meta">${esc(c.source)}</span><q>“${esc(c.quote)}”</q><span class="meta">${esc(c.requirement||'')}</span></div>`}
+function add(html,cls=''){const f=$('#feed');const d=document.createElement('div');d.className='ev '+cls;d.innerHTML=html;f.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'nearest'});return d}
+function render(e,ctx){
+  rail(e);const d=e.data||{};
+  if(e.status==='progress'&&!d.diff_preview&&!d.violations)return add(`<div class="t">· ${esc(e.title)} <span class="muted">${esc(e.detail)}</span></div>`,'small');
+  if(e.status==='started')return add(`<div class="t">… ${esc(e.title)}</div>`,'small');
+  if(d.clauses)d.clauses.forEach(c=>ctx.clauses[c.id]=c);
+  if(e.stage==='spec'&&e.status==='waiting_human'){
+    document.querySelectorAll('.gate[data-g=spec]').forEach(x=>x.remove());
+    const g=add(`<div class="t">📜 ${esc(e.title)}</div><div class="d">Every quote is verbatim from the repo's specs. Approve to write tests first.</div>${(d.clauses||[]).map(clauseHtml).join('')}
+      <textarea id="specEdit" placeholder="Want changes? e.g. also cover empty audience lists"></textarea>
+      <div class="row" style="margin-top:10px"><button class="btn good" onclick='gate(${JSON.stringify(ctx.id)},"spec","approve",this)'>Approve spec</button>
+      <button class="btn" onclick='gate(${JSON.stringify(ctx.id)},"spec","edit",this,"specEdit")'>Edit clauses</button></div>`,'gate');g.dataset.g='spec';return}
+  if(e.stage==='spec'&&e.status==='done'){document.querySelectorAll('.gate[data-g=spec]').forEach(x=>x.remove());return add(`<div class="t">📜 ${esc(e.title)}</div>${(d.clauses||[]).map(clauseHtml).join('')}`)}
+  if(e.stage==='tests_red'&&e.status==='done'){
+    const tests=d.tests||[];add(`<div class="t big" style="color:var(--red)">🔴 ${esc(e.title)}</div><div class="d">${esc(e.detail)}</div>`,'red');
+    tests.forEach(t=>{const c=ctx.clauses[t.clause_id]||{};add(`<div class="t" style="color:var(--red)">✘ ${esc(t.clause_id)} <span class="muted mono">${esc((t.name||'').split('::').pop())}</span></div><q class="d" style="display:block">“${esc(c.quote||'')}”</q><div class="out">${esc(t.output_snippet)}</div>`,'red')});return}
+  if(e.stage==='implement'&&d.diff_preview)return add(`<div class="t">🔥 ${esc(e.title)} <span class="muted mono">${esc(e.detail)}</span></div><div class="diff">${d.diff_preview.split('\n').map(l=>`<div class="${l.startsWith('+')&&!l.startsWith('+++')?'p':l.startsWith('-')&&!l.startsWith('---')?'m':''}">${esc(l)}</div>`).join('')}</div>`);
+  if(e.stage==='tests_green'&&d.evidence){add(`<div class="t big" style="color:var(--green)">🟢 ${esc(e.title)}</div><div class="d">${esc(e.detail)}</div>`,'green');
+    d.evidence.forEach(r=>add(`<div class="t" style="color:var(--green)">✔ ${esc(r.clause_id)} <span class="muted">${esc(r.source)}</span> <span class="muted mono">${esc(r.test)}</span></div><div class="flip"><div class="b">❌ ${esc(r.before)}</div><div>→</div><div class="a">✅ ${esc(r.after)}</div></div>`,'green'));return}
+  if(d.violations&&d.violations.length){
+    d.violations.forEach(v=>add(`<h4>🚨 VIOLATION PROVEN BY A FAILING TEST</h4><div><span class="lv MUST">${esc('SPEC')}</span><b>${esc(v.clause_id)}</b> <span class="meta muted">${esc(v.source)}</span></div><q>“${esc(v.quote)}”</q>
+      <div class="muted" style="font-size:12px">Failing test <span class="mono">${esc(v.test_name)}</span></div><div class="out">${esc(v.output_snippet)}</div>${v.suggested_fix?`<div class="d"><b>Suggested fix:</b> ${esc(v.suggested_fix)}</div>`:''}`,'violation'));return}
+  if(e.stage==='inspect'&&e.status==='done')return add(`<div class="t" style="color:var(--green)">🕵️ ${esc(e.title)} <span class="muted">${esc(e.detail)}</span></div>`,'green');
+  if(e.stage==='pr'&&e.status==='done'&&d.pr_url)return add(`<div class="t big">🍽️ ${esc(e.title)}</div><div class="row" style="margin-top:8px"><a class="btn primary" style="text-decoration:none" target="_blank" rel="noopener" href="${esc(d.pr_url)}">Open the PR on GitHub ↗</a></div>`,'green');
+  if(e.stage==='human_review'&&e.status==='waiting_human'){document.querySelectorAll('.gate[data-g=review]').forEach(x=>x.remove());
+    const g=add(`<div class="t">💬 ${esc(e.title)}</div><div class="d">Approve to squash-merge, or ask for changes — SpecGuard revises, re-proves and pushes a new round to the same PR.</div>
+      <textarea id="revEdit" placeholder="e.g. also reject an empty aud list"></textarea><div class="row" style="margin-top:10px"><button class="btn good" onclick='gate(${JSON.stringify(ctx.id)},"review","approve",this)'>Approve &amp; merge</button>
+      <button class="btn" onclick='gate(${JSON.stringify(ctx.id)},"review","changes",this,"revEdit")'>Request changes</button></div>`,'gate');g.dataset.g='review';return}
+  if(e.stage==='human_review'&&e.status==='done'){document.querySelectorAll('.gate[data-g=review]').forEach(x=>x.remove());return add(`<div class="t">💬 ${esc(e.title)} <span class="muted">${esc(e.detail)}</span></div>`,'small')}
+  if(e.stage==='merged')return add(`<div class="t big" style="color:var(--green)">🔔 ${esc(e.title)}</div>`,'green');
+  if(e.stage==='verdict')return add(`<div class="t big" style="${e.status==='failed'||(d.violations&&d.violations.length)?'color:var(--red)':'color:var(--green)'}">⚖️ ${esc(e.title)}</div><div class="d">${esc(e.detail)}</div>`,(d.violations&&d.violations.length)?'red':'green');
+  const bad=e.status==='failed';
+  add(`<div class="t" ${bad?'style="color:var(--red)"':''}>${bad?'✘':'✔'} ${esc(e.title)}</div>${e.detail?`<div class="d">${esc(e.detail)}</div>`:''}`,bad?'red':'');
+}
+async function gate(id,name,decision,btn,taId){
+  const text=taId?$('#'+taId).value.trim():'';if(decision!=='approve'&&!text){alert('Tell SpecGuard what to change.');return}
+  btn.disabled=true;try{await post(`/api/runs/${id}/gate`,{name,decision,text})}catch(e){alert(e.message);btn.disabled=false}
+}
+
+/* ---------- chat ---------- */
+function toggleChat(){const c=$('#chat');c.classList.toggle('open');if(c.classList.contains('open')&&!CHAT.length)bubble('a',`Hi ${ME.name.split(' ')[0]}! Ask me about a repo, how a run works, or what to build first.`)}
+function bubble(r,t){CHAT.push({role:r==='u'?'user':'assistant',text:t});const m=document.createElement('div');m.className='m '+r;m.textContent=t;$('#msgs').appendChild(m);$('#msgs').scrollTop=1e9;return m}
+async function sendChat(e){e.preventDefault();const i=$('#chatIn'),t=i.value.trim();if(!t)return;i.value='';bubble('u',t);const w=bubble('a','…');
+  try{const r=await post('/api/chat',{message:t,repo:SELECTED,history:CHAT.slice(0,-2)});w.textContent=r.reply;CHAT[CHAT.length-1].text=r.reply}catch(x){w.textContent='Sorry — '+x.message}}
+init();
+</script>
+</body>
+</html>
