@@ -4,7 +4,7 @@ import os
 import subprocess
 import sys
 
-from . import events, gh, llm, pipeline
+from . import __version__, events, gh, llm, pipeline
 
 
 def get_token(user: str = "") -> str:
@@ -29,6 +29,7 @@ def main():
     except Exception:  # noqa: BLE001
         pass
     ap = argparse.ArgumentParser(prog="specguard")
+    ap.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     ap.add_argument("--fresh", action="store_true", help="bypass the LLM cache")
     sub = ap.add_subparsers(dest="cmd", required=True)
     b = sub.add_parser("build"); b.add_argument("--repo", required=True); b.add_argument("--feature", required=True)
