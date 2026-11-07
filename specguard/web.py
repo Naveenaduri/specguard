@@ -167,7 +167,8 @@ def _row(r) -> dict:
             "issues": r.open_issues_count, "pushed_at": r.pushed_at.isoformat() if r.pushed_at else "",
             "created_at": r.created_at.isoformat() if r.created_at else "", "topics": list(r.topics or []),
             "description": r.description or "", "write": bool(p and (p.push or p.admin)),
-            "fork": r.fork, "parent": parent, "archived": r.archived}
+            "fork": r.fork, "parent": parent, "archived": r.archived, "html_url": r.html_url,
+            "default_branch": r.default_branch, "license": (r.license.spdx_id if r.license else ""), "homepage": r.homepage or ""}
 
 
 def _repo_rows(g, owner: str = "", me: str = "") -> list:
@@ -186,6 +187,26 @@ def _repo_rows(g, owner: str = "", me: str = "") -> list:
 @app.get("/api/repos")
 def repos(u: dict = Depends(user)):
     return _repo_rows(gh.client(u["token"]))
+
+
+@app.get("/api/repo/{owner}/{name}/issues")
+def repo_issues(owner: str, name: str, v: dict = Depends(viewer)):
+    """Open issues (not PRs), so a build can start from one."""
+    g = gh.client(v["token"])
+    try:
+        r = g.get_repo(f"{owner}/{name}")
+    except GithubException as exc:
+        raise HTTPException(404, _missing_msg(v, exc=exc)) from exc
+    _public_only(r, v)
+    out = []
+    for i in itertools.islice(r.get_issues(state="open", sort="updated", direction="desc"), 30):
+        if i.pull_request:
+            continue
+        out.append({"number": i.number, "title": i.title, "body": (i.body or "")[:1200], "url": i.html_url,
+                    "author": i.user.login if i.user else "", "labels": [l.name for l in i.labels][:4]})
+        if len(out) >= 12:
+            break
+    return {"repo": f"{owner}/{name}", "issues": out}
 
 
 @app.get("/api/owner/{owner}/repos")

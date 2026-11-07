@@ -49,6 +49,7 @@ h1,h2,h3{margin:0;letter-spacing:-.02em} h2{font-size:26px;font-weight:700} .sub
 label{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:16px 0 7px;font-family:var(--mono)}
 select{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--line2);color:var(--text);border-radius:11px;padding:12px 14px;font:inherit;font-family:var(--mono);font-size:13.5px}
 select:focus{outline:0;border-color:var(--cyan)}
+.pill.lk{text-decoration:none;cursor:pointer;color:inherit;font:inherit;font-family:var(--mono);font-size:11.5px} .pill.lk:hover{border-color:var(--cyan);color:var(--text)}
 .rinfo{margin-top:14px;border:1px solid var(--line);background:var(--glass);border-radius:14px;padding:16px 18px;line-height:1.55} .rinfo b{font-size:15px} .rinfo p{margin:6px 0 10px;color:var(--muted);font-size:13.5px}
 input,textarea{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--line2);color:var(--text);border-radius:11px;padding:11px 14px;font:inherit}
 input:focus,textarea:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(56,225,255,.14)}
@@ -387,10 +388,23 @@ function setTgt(v){TGT=v||'';const b=$('#tgt');b.classList.remove('hide');$('#tg
 const RC={};
 async function ownerRepos(owner){const k=(owner||'@me').toLowerCase();if(!RC[k])RC[k]=await api('/api/owner/'+encodeURIComponent(owner||'@me')+'/repos');return RC[k]}
 const optsHtml=(rs,sel,first)=>(first?`<option value="">${first}</option>`:'')+rs.map(r=>`<option value="${esc(r.full_name)}" ${r.full_name===sel?'selected':''}>${esc(r.name)}${r.description?' — '+esc(r.description.slice(0,60)):''}</option>`).join('');
-function repoInfo(r,build){
+function repoInfo(r,build,withIssues){
+  const u=r.html_url||('https://github.com/'+r.full_name),A=(href,txt,cls='')=>`<a class="pill lk ${cls}" href="${esc(href)}" target="_blank" rel="noopener">${txt}</a>`;
   const wr=build?(r.write?'<span class="pill ok">you can push — PR from a branch</span>':'<span class="pill cy">read-only — we fork, PR from your fork</span>'):(r.write?'<span class="pill ok">you can write</span>':'<span class="pill">read-only</span>');
-  return `<div class="rinfo"><b>${esc(r.full_name)}</b> ${r.private?'<span class="pill no">private</span>':''}${r.archived?'<span class="pill">archived</span>':''}<p>${esc(r.description||'No description.')}</p>
-  <div class="row" style="gap:8px;flex-wrap:wrap">${r.language?`<span class="pill"><i class="dot" style="background:${langColor(r.language)}"></i>${esc(r.language)}</span>`:''}<span class="pill">★ ${r.stars}</span><span class="pill">pushed ${ago(r.pushed_at)}</span><span class="pill">${r.issues} open issues</span>${wr}</div></div>`}
+  const iss=withIssues&&r.issues?`<button type="button" class="pill lk cy" onclick="toggleIssues('${esc(r.full_name)}')">${r.issues} open issues ▾</button>`:A(u+'/issues',`${r.issues} open issues`);
+  return `<div class="rinfo"><b>${esc(r.full_name)}</b> ${r.private?'<span class="pill no">private</span>':''}${r.archived?'<span class="pill">archived</span>':''}${r.fork?'<span class="pill">fork</span>':''}<p>${esc(r.description||'No description.')}</p>
+  <div class="row" style="gap:8px;flex-wrap:wrap">${r.language?A(u,`<i class="dot" style="background:${langColor(r.language)}"></i>${esc(r.language)}`):''}${A(u+'/stargazers','★ '+r.stars)}${A(u+'/network/members','⑂ '+(r.forks||0)+' forks')}${A(u+'/commits','pushed '+ago(r.pushed_at))}${iss}${r.license&&r.license!=='NOASSERTION'?A(u,esc(r.license)):''}${r.default_branch?A(u+'/tree/'+r.default_branch,'⎇ '+esc(r.default_branch)):''}${r.homepage?A(r.homepage,'site ↗'):''}${wr}</div>
+  ${(r.topics||[]).length?`<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px">${r.topics.slice(0,8).map(t=>A('https://github.com/topics/'+t,'#'+esc(t))).join('')}</div>`:''}
+  <div id="issues" style="margin-top:12px"></div></div>`}
+async function toggleIssues(full){
+  const el=$('#issues');if(el.innerHTML){el.innerHTML='';return}
+  el.innerHTML='<div class="muted" style="font-size:13px">Loading issues…</div>';
+  try{const d=await api('/api/repo/'+full+'/issues');window.ISS=d.issues;
+    el.innerHTML=d.issues.length?`<div class="lbl" style="margin:4px 0 8px">Pick an issue to build from</div>`+d.issues.map((i,k)=>`<div class="rel" style="cursor:pointer" onclick="useIssue(${k})"><b>#${i.number}</b><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.title)}</span><a class="btn sm" style="margin-left:auto;text-decoration:none" href="${esc(i.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗</a></div>`).join(''):'<div class="muted" style="font-size:13px">No open issues.</div>'}
+  catch(e){el.innerHTML=`<div class="ferr">${esc(e.message)}</div>`}}
+function useIssue(k){const i=window.ISS[k],f=$('#bfeat');if(!f)return;f.value=`Resolve issue #${i.number}: ${i.title}
+
+${(i.body||'').trim()}`.trim();f.focus();$('#issues').innerHTML='';toast('Issue #'+i.number+' added as the request')}
 function openTarget(){
   if($('#tmodal'))return;
   const m=document.createElement('div');m.id='tmodal';
@@ -641,7 +655,7 @@ async function buildView(repo){
   catch(e){$('#bsel').innerHTML='<option value="">Could not load repositories</option>';$('#brepoErr').textContent=e.message}
 }
 let BR=[];
-function bPick(){const v=$('#bsel').value,r=BR.find(x=>x.full_name===v);$('#binfo').innerHTML=r?repoInfo(r,true):'';if(v){setTgt(v);setCtx(v)}}
+function bPick(){const v=$('#bsel').value,r=BR.find(x=>x.full_name===v);$('#binfo').innerHTML=r?repoInfo(r,true,true):'';if(v){setTgt(v);setCtx(v)}}
 async function startBuild(){
   const repo=$('#bsel').value,feature=$('#bfeat').value.trim();if(!repo){$('#brepoErr').textContent='Choose a repository first.';return}$('#brepoErr').textContent='';if(!feature){$('#berr').innerHTML='<div class="notice">Describe the feature you want.</div>';return}
   $('#bgo').disabled=true;try{const r=await post('/api/build',{repo,feature});openRun(r.run_id)}catch(e){$('#berr').innerHTML=`<div class="notice">${esc(e.message)}</div>`;$('#bgo').disabled=false}
