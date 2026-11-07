@@ -37,8 +37,14 @@ def main():
     r = sub.add_parser("review"); r.add_argument("--repo", required=True); r.add_argument("--pr", type=int, required=True)
     r.add_argument("--comment", action="store_true"); r.add_argument("--gh-user", default=os.getenv("GITHUB_ORG", ""))
     s = sub.add_parser("serve"); s.add_argument("--port", type=int, default=8000)
+    sub.add_parser("bench", help="score the review rubric on labelled diffs")
     a = ap.parse_args()
     llm.set_fresh(a.fresh)
+    if a.cmd == "bench":
+        from . import bench
+        r = bench.main()
+        print(bench.to_markdown(r))
+        return
     if a.cmd == "serve":
         import uvicorn
         uvicorn.run("specguard.web:app", host="127.0.0.1", port=a.port)

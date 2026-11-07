@@ -182,6 +182,59 @@ pre.sum{white-space:pre-wrap;font:13px/1.6 var(--sans);background:rgba(0,0,0,.3)
 .steps span{font-weight:600;font-size:14px}.steps small{color:var(--muted);font-size:12px;line-height:1.4}
 @media(max-width:700px){.steps{grid-template-columns:1fr}}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:80;background:rgba(8,12,22,.96);border:1px solid var(--amber);color:var(--amber);padding:11px 18px;border-radius:12px;max-width:min(560px,92vw);font-size:13.5px;box-shadow:0 20px 50px -15px #000}
+
+/* ===== air, motion, review card ===== */
+main{padding:52px 36px 160px;max-width:1120px} main.wide{padding:22px 26px 28px;max-width:none}
+.hero{padding:96px 0 18px} .hero p{margin:26px auto 40px;line-height:1.75}
+.panel{padding:30px} .cards3{gap:22px;margin-top:56px} .act{padding:32px}
+h2{font-size:30px} .sub{margin:8px 0 38px} label{margin:24px 0 10px}
+.feed{gap:28px;max-width:780px}
+.ev{padding:24px 28px;border-radius:18px;line-height:1.75;border-color:var(--line)}
+.ev.small{padding:2px 6px;border:0;background:none} .ev.small .t{font-size:13px}
+.rep h4{margin:36px 0 14px} .rep .what{line-height:1.85;font-size:16px}
+.rc{padding:22px 24px;gap:14px} #list{gap:22px}
+.stats{gap:12px;margin:24px 0} .sec{margin:32px 0 12px}
+#bg{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none}
+.lbl{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.lead{font-size:17px;line-height:1.8;margin:0;color:var(--text)}
+.kv{display:grid;grid-template-columns:minmax(120px,170px) 1fr;gap:14px 28px;margin:0;align-items:baseline}
+.kv dt{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.kv dd{margin:0;line-height:1.7;min-width:0;overflow-wrap:anywhere} .kv dd b{font-weight:650}
+.kv dd.good{color:var(--green)} .kv dd.bad{color:var(--red)} .kv dd.warn{color:var(--amber)}
+@media(max-width:640px){.kv{grid-template-columns:1fr;gap:4px}.kv dd{margin-bottom:14px}}
+.vcard{border:1px solid var(--line2);border-radius:22px;padding:34px 34px 30px;position:relative;overflow:hidden;background:var(--glass);animation:in .5s ease}
+.vcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c)}
+.vcard.bad{--c:var(--red);box-shadow:0 0 70px -30px rgba(255,77,115,.7);background:linear-gradient(120deg,rgba(255,77,115,.1),var(--glass) 55%)}
+.vcard.warn{--c:var(--amber)} .vcard.good{--c:var(--green);background:linear-gradient(120deg,rgba(61,255,176,.08),var(--glass) 55%)}
+.vtitle{display:flex;align-items:center;gap:12px;font-size:26px;font-weight:750;letter-spacing:-.02em;margin-bottom:26px;color:var(--c)}
+.vtitle i{width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:0 0 0 0 var(--c);animation:ping 2s infinite}
+@keyframes ping{70%{box-shadow:0 0 0 12px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.finding{border-left:3px solid var(--line2);padding-left:30px}
+.finding.sev-critical{border-left-color:var(--red)} .finding.sev-major{border-left-color:#ff8a5b} .finding.sev-minor{border-left-color:var(--amber)} .finding.sev-trivial{border-left-color:var(--dim)}
+.fh{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:12px}
+.fh .sev{font-weight:700;color:var(--text)} .fh .sev.critical{color:var(--red)} .fh .sev.major{color:#ff8a5b} .fh .sev.minor{color:var(--amber)}
+.fh .badge{padding:2px 10px;border-radius:99px;border:1px solid var(--line2)} .fh .badge.proven{color:var(--red);border-color:rgba(255,77,115,.5);background:rgba(255,77,115,.08)} .fh .badge.headsup{color:var(--amber);border-color:rgba(255,193,90,.45)}
+.finding h4{font-size:19px;line-height:1.4;margin:0 0 20px;letter-spacing:-.01em;font-family:var(--sans);text-transform:none;color:var(--text);font-weight:650}
+.bars{display:grid;gap:12px} .bar-r{display:grid;grid-template-columns:170px 1fr 46px;gap:14px;align-items:center;font-size:13.5px}
+.bar-r .n{color:var(--muted)} .bar-r.top .n{color:var(--text);font-weight:650}
+.bar-r .tr{height:8px;background:var(--glass2);border-radius:99px;overflow:hidden} .bar-r .fl{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--cyan),var(--violet));transition:width 1.1s cubic-bezier(.2,.8,.2,1)}
+.bar-r.top .fl{background:linear-gradient(90deg,var(--violet),var(--red))} .bar-r .pc{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right}
+@media(max-width:640px){.bar-r{grid-template-columns:120px 1fr 40px}}
+.track{display:flex;align-items:center;margin:6px 0 40px;overflow-x:auto;padding:8px 2px 14px}
+.tn{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:62px} .tn b{width:14px;height:14px;border-radius:50%;background:var(--glass2);border:2px solid var(--line2);transition:.4s;position:relative}
+.tn em{font-style:normal;font-size:11.5px;color:var(--dim);white-space:nowrap;transition:.3s}
+.tn.active b{background:var(--violet);border-color:var(--violet);animation:orb 1.5s infinite} .tn.active em{color:var(--text)}
+@keyframes orb{0%{box-shadow:0 0 0 0 rgba(139,123,255,.7)}100%{box-shadow:0 0 0 14px rgba(139,123,255,0)}}
+.tn.done b{background:var(--green);border-color:var(--green)} .tn.done b::after{content:"";position:absolute;left:3px;top:0;width:3px;height:7px;border:solid #03271a;border-width:0 2px 2px 0;transform:rotate(45deg);animation:tick .35s ease}
+@keyframes tick{from{height:0;width:0}} .tn.done em{color:var(--green)} .tn.failed b{background:var(--red);border-color:var(--red)} .tn.failed em{color:var(--red)} .tn.wait b{background:var(--amber);border-color:var(--amber);animation:orb 1.5s infinite} .tn.wait em{color:var(--amber)}
+.tc{flex:1;min-width:16px;height:2px;background:var(--line2);margin-bottom:24px;position:relative;overflow:hidden;border-radius:2px} .tc.on{background:var(--green)}
+.tc.flow::after{content:"";position:absolute;inset:0;width:60%;background:linear-gradient(90deg,transparent,var(--cyan),transparent);animation:flow 1.1s linear infinite} @keyframes flow{from{transform:translateX(-100%)}to{transform:translateX(220%)}}
+.scan{display:flex;align-items:center;gap:12px;color:var(--muted);font-family:var(--mono);font-size:12.5px;margin:-6px 0 26px}
+.scan i{display:block;flex:1;height:2px;max-width:220px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--cyan),var(--violet),transparent);background-size:200% 100%;animation:scan 1.4s linear infinite} @keyframes scan{to{background-position:-200% 0}}
+.catline{display:flex;align-items:center;gap:10px}
+.cat-prob{display:grid;grid-template-columns:1fr 40px;gap:10px;align-items:center;margin:4px 0;font-size:12.5px;color:var(--muted)}
+.cat-prob i{display:block;height:5px;border-radius:99px;background:linear-gradient(90deg,var(--cyan),var(--violet))}
+.hl{color:var(--text)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation-duration:.01ms!important}}
 .rf{display:flex;align-items:center;background:rgba(0,0,0,.35);border:1px solid var(--line2);border-radius:11px;transition:.15s}
 .rf:focus-within{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(56,225,255,.14)}
@@ -204,6 +257,7 @@ pre.sum{white-space:pre-wrap;font:13px/1.6 var(--sans);background:rgba(0,0,0,.3)
   <a class="btn primary sm hide" id="signin" href="/auth/github">Sign in with GitHub</a>
   <div class="chip hide" id="userChip"><img id="avatar" alt=""><span id="uname"></span><button onclick="logout()">Sign out</button></div>
 </header>
+<canvas id="bg" class="hide"></canvas>
 <main id="app"></main>
 <aside id="drawer"></aside>
 
@@ -250,12 +304,21 @@ async function landing(msg){
   <p>SpecGuard writes the tests first, implements until they pass, and reviews any PR by running tests — never by guessing.</p>
   ${msg?`<div class="notice" style="max-width:560px;margin:0 auto 22px">${esc(msg)}</div>`:''}</div>
   <div class="panel tryp"><label style="margin-top:0">Try it now — no sign-in needed</label>${targetField('tin','tout')}
-   <div class="row" style="margin-top:14px"><button class="btn primary" onclick="analyze('tin','tout')">Analyze</button><span class="muted" style="font-size:12.5px">Paste a public repo for a report, or an open PR to review it. Reviews are read-only.</span></div></div>
+   <div class="row" style="margin-top:14px"><button class="btn primary" onclick="analyze('tin','tout')">Analyze</button><span class="muted" style="font-size:12.5px">Paste a public repo for a report, or any open PR to review it. Reviews are read-only.</span></div></div>
   <div id="tout" style="max-width:720px;margin:18px auto 0"></div>
-  <div class="steps"><div><b>1</b><span>Spec clauses</span><small>Verbatim quotes from the repo's own standards</small></div><div><b>2</b><span>Tests first</span><small>Shown failing, then flipped to passing</small></div><div><b>3</b><span>Proof in the PR</span><small>Every finding backed by a failing test</small></div></div>
+  <div class="steps"><div><b>1</b><span>Understand</span><small>What the change does, in plain English</small></div><div><b>2</b><span>Score</span><small>Nine review categories, decided by SubQ</small></div><div><b>3</b><span>Prove</span><small>Problems are backed by an executed failing test</small></div></div>
   <p class="muted" style="text-align:center;margin-top:34px;font-size:13.5px">Sign in with GitHub to build features, explore your repos as a map, review private PRs and post reviews.
    <a class="btn sm" style="margin-left:8px;text-decoration:none" href="${c.github?'/auth/github':(c.local?'/auth/local':'/auth/github')}">${c.github||!c.local?'Sign in with GitHub':'Local dev sign-in'}</a></p>`;
+  startBg();
 }
+let BG=null;
+function startBg(){if(BG||matchMedia('(prefers-reduced-motion: reduce)').matches)return;const cv=$('#bg');cv.classList.remove('hide');const ctx=cv.getContext('2d'),dpr=Math.min(devicePixelRatio||1,2);let W,H,pts=[];
+  const size=()=>{W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);pts=Array.from({length:Math.round(W*H/20000)},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.28,vy:(Math.random()-.5)*.28}))};size();addEventListener('resize',size);
+  let raf;const loop=()=>{ctx.clearRect(0,0,W,H);for(const p of pts){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1}
+    for(let i=0;i<pts.length;i++){for(let j=i+1;j<pts.length;j++){const a=pts[i],b=pts[j],d=Math.hypot(a.x-b.x,a.y-b.y);if(d<140){ctx.strokeStyle=`rgba(56,225,255,${.16*(1-d/140)})`;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}}
+      ctx.fillStyle='rgba(139,123,255,.6)';ctx.beginPath();ctx.arc(pts[i].x,pts[i].y,1.7,0,7);ctx.fill()}raf=requestAnimationFrame(loop)};loop();
+  BG={stop(){cancelAnimationFrame(raf);removeEventListener('resize',size);cv.classList.add('hide');BG=null}}}
+function stopBg(){if(BG)BG.stop()}
 const parseTarget=v=>{v=(v||'').trim().replace(/^https?:\/\/(www\.)?github\.com\//i,'').replace(/^github\.com\//i,'').replace(/[?#].*$/,'').replace(/\/+$/,'');
   let m=v.match(/^([\w.-]+)\/([\w.-]+?)(?:\.git)?\/pull\/(\d+)/)||v.match(/^([\w.-]+)\/([\w.-]+?)#(\d+)$/);
   if(m)return{repo:m[1]+'/'+m[2],pr:+m[3]};
@@ -293,12 +356,12 @@ function reportHtml(h){
   <h4>Health</h4><div class="health">${h.health.map(x=>`<div class="hrow ${x.ok===true?'ok':x.ok===false?'warn':''}"><i>${x.ok===true?'✓':x.ok===false?'!':'•'}</i><b>${esc(x.label)}</b><span>${esc(x.detail)}</span></div>`).join('')}</div>
   ${(r.notable||[]).length?`<h4>Worth knowing</h4><ul class="bul">${li(r.notable)}</ul>`:''}${(r.watch||[]).length?`<h4>Watch out</h4><ul class="bul warn">${li(r.watch)}</ul>`:''}
   <h4>Recent commits</h4>${h.commits.slice(0,4).map(c=>`<div class="crow"><span class="mono">${esc(c.sha)}</span><span>${esc(c.msg)}</span></div>`).join('')||'<div class="muted">none</div>'}
-  <h4>Open pull requests</h4>${h.prs.map(p=>`<div class="rel" style="cursor:default"><b>#${p.number}</b><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.title)}</span><button class="btn sm" style="margin-left:auto" onclick='startReview(${JSON.stringify(h.repo)},${p.number})' ${h.has_specs?'':'disabled'}>Review</button></div>`).join('')||'<div class="muted" style="font-size:13px">none open</div>'}
-  ${h.prs.length&&!h.has_specs?'<div class="muted note">Review is disabled: this repo has no specs/ folder for SpecGuard to check code against.</div>':''}</div>`;
+  <h4>Open pull requests</h4>${h.prs.map(p=>`<div class="rel" style="cursor:default"><b>#${p.number}</b><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.title)}</span><button class="btn sm" style="margin-left:auto" onclick='startReview(${JSON.stringify(h.repo)},${p.number})'>Review</button></div>`).join('')||'<div class="muted" style="font-size:13px">none open</div>'}
+</div>`;
 }
 async function logout(){await post('/auth/logout',{});location.reload()}
 function go(v,arg){
-  if(ES){ES.close();ES=null} if(GR){GR.stop();GR=null}
+  stopBg();if(ES){ES.close();ES=null} if(GR){GR.stop();GR=null}
   closeDrawer(); const f={home,explore,read:readView,build:buildView}[v]||home; v=f===home?'home':v;
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   app.classList.toggle('wide',v==='explore'); if(location.hash.slice(1).split(':')[0]!==v)history.replaceState(null,'','#'+v); f(arg);
@@ -319,7 +382,8 @@ async function loadGraph(refresh){if(!G||refresh)G=await api('/api/graph'+(refre
 
 /* ---------- explore ---------- */
 const matches=r=>{const q=FILTER.q.toLowerCase();if(q&&!(r.full_name+' '+(r.description||'')+' '+(r.language||'')+' '+clusterOf(r).name).toLowerCase().includes(q))return false;
-  const c=FILTER.chip;return c==='all'||(c==='write'&&r.write)||(c==='private'&&r.private)||(c==='recent'&&(Date.now()-new Date(r.pushed_at))/864e5<30)||(c==='fork'&&r.fork)||(c.startsWith('lang:')&&r.language===c.slice(5))};
+  const c=FILTER.chip;return c==='all'||(c==='write'&&r.write)||(c==='private'&&r.private)||(c==='recent'&&(Date.now()-new Date(r.pushed_at))/864e5<30)||(c==='fork'&&r.fork)||(c==='attention'&&(decisionOf(r)||{}).attention>=.9)||(c.startsWith('cat:')&&clusterOf(r).name===c.slice(4))||(c.startsWith('lang:')&&r.language===c.slice(5))};
+const decisionOf=r=>((G&&G.decisions)||{})[r.full_name];
 const clusterOf=r=>G.clusters.find(c=>c.id===G.assign[r.full_name])||{name:'Other',blurb:''};
 async function explore(){
   const sub=location.hash.split(':');if(sub[1]==='list')VIEW='list';
@@ -336,20 +400,20 @@ async function explore(){
   $('#refresh').onclick=async()=>{G=null;go('explore')};
   try{await loadGraph()}catch(e){$('#load').innerHTML=`<div class="notice">Could not load repos: ${esc(e.message)}</div>`;return}
   renderChips();renderList();
-  $('#key').innerHTML=Object.entries(EDGE).map(([k,[c,l]])=>`<span><i style="background:${c}"></i>${l}</span>`).join('')+'<span style="color:#ffc15a">◌ read-only</span><span>◌ private</span>';
+  $('#key').innerHTML=`<span style="color:var(--cyan)">${G.method==='decision-model'?'◆ categories decided per repo by SubQ Snap 1.1 — built from your repos':'◇ categories grouped by AI (decision model unavailable)'}</span>`+Object.entries(EDGE).map(([k,[c,l]])=>`<span><i style="background:${c}"></i>${l}</span>`).join('')+'<span style="color:#ffc15a">◌ read-only</span><span>◌ private</span>';
   $('#load').classList.add('hide');GR=makeGraph($('#cv'),G);applyFilter();if(sub[1]==='pick')setTimeout(()=>pick(sub.slice(2).join(':')),400);
 }
 function renderChips(){
-  const langs=[...new Set(G.repos.map(r=>r.language).filter(Boolean))].slice(0,5);
-  const items=[['all','All'],['write','Writable'],['recent','Active 30d'],['private','Private'],...langs.map(l=>['lang:'+l,l])];
-  $('#chips').innerHTML=items.map(([k,l])=>`<button class="fc ${FILTER.chip===k?'on':''}" data-k="${esc(k)}">${k.startsWith('lang:')?`<i class="dot" style="background:${langColor(l)}"></i>`:''}${esc(l)}</button>`).join('');
+  const hasAtt=G.repos.some(r=>(decisionOf(r)||{}).attention>=.9);
+  const items=[['all','All'],['recent','Active 30d'],...(hasAtt?[['attention','Needs attention']]:[]),...G.clusters.slice(0,7).map(c=>['cat:'+c.name,c.name])];
+  $('#chips').innerHTML=items.map(([k,l])=>{const ci=G.clusters.findIndex(c=>'cat:'+c.name===k);return `<button class="fc ${FILTER.chip===k?'on':''}" data-k="${esc(k)}">${ci>=0?`<i class="dot" style="background:${CL[ci%CL.length]}"></i>`:''}${esc(l)}</button>`}).join('');
   document.querySelectorAll('.fc').forEach(b=>b.onclick=()=>{FILTER.chip=b.dataset.k;document.querySelectorAll('.fc').forEach(x=>x.classList.toggle('on',x===b));applyFilter()});
 }
 function applyFilter(){if(GR)GR.setFilter(matches);renderList()}
 function repoCard(r){const rel=G.edges.filter(e=>e.a===r.full_name||e.b===r.full_name).length,cl=clusterOf(r);
   return `<div class="rc" onclick='pick(${JSON.stringify(r.full_name)})'><div class="n"><i class="dot" style="background:${langColor(r.language)}"></i>${esc(r.name)}<small>${esc(r.owner)}</small></div>
   <div class="d">${esc(r.description||'No description')}</div>
-  <div class="tags">${r.write?'<span class="pill ok">write</span>':'<span class="pill">read</span>'}${r.private?'<span class="pill no">private</span>':''}${r.fork?'<span class="pill cy">fork</span>':''}${r.archived?'<span class="pill">archived</span>':''}<span class="pill">${esc(cl.name)}</span></div>
+  <div class="tags">${r.write?'<span class="pill ok">write</span>':'<span class="pill">read</span>'}${r.private?'<span class="pill no">private</span>':''}${r.fork?'<span class="pill cy">fork</span>':''}${r.archived?'<span class="pill">archived</span>':''}<span class="pill">${esc(cl.name)}</span>${decisionOf(r)?`<span class="pill">${esc(decisionOf(r).maturity)}</span>`:''}${(decisionOf(r)||{}).attention>=.9?'<span class="pill no">may be abandoned</span>':''}</div>
   <div class="st"><span>★ ${r.stars}</span><span>⑂ ${r.forks}</span><span>◎ ${r.issues}</span><span>${esc(r.language||'—')}</span><span>${ago(r.pushed_at)}</span>${rel?`<span style="color:var(--cyan)">⇄ ${rel} related</span>`:''}</div></div>`}
 function renderList(){if(!G)return;const el=$('#list');if(!el)return;const rs=G.repos.filter(matches);el.innerHTML=rs.map(repoCard).join('')||'<div class="muted" style="padding:30px">No repositories match.</div>'}
 function pick(full){const r=G.repos.find(x=>x.full_name===full);if(!r)return;setCtx(full);if(GR)GR.select(full,true);openDrawer(r)}
@@ -361,7 +425,9 @@ function openDrawer(r){
   <div class="row"><span class="pill"><i class="dot" style="background:${langColor(r.language)}"></i>${esc(r.language||'—')}</span><span class="pill ${r.write?'ok':'no'}">${r.write?'write access':'read only'}</span><span class="pill">${r.private?'private':'public'}</span>${r.archived?'<span class="pill no">archived</span>':''}</div>
   <div class="stats"><div class="stat"><b>${r.stars}</b><span>stars</span></div><div class="stat"><b>${r.forks}</b><span>forks</span></div><div class="stat"><b>${r.issues}</b><span>open issues</span></div>
    <div class="stat"><b>${kb(r.size)}</b><span>size</span></div><div class="stat"><b>${ago(r.pushed_at)}</b><span>last push</span></div><div class="stat"><b>${(r.created_at||'').slice(0,7)||'—'}</b><span>created</span></div></div>
-  <div class="sec">Theme</div><div class="rel" style="cursor:default"><i class="dot" style="background:${CL[G.clusters.indexOf(cl)%CL.length]}"></i><b>${esc(cl.name)}</b><small>${esc(cl.blurb||'')}</small></div>
+  <div class="sec">Decision model</div>${kv([['Category',`<span class="catline"><i class="dot" style="background:${CL[G.clusters.indexOf(cl)%CL.length]}"></i><b>${esc(cl.name)}</b></span><div class="muted" style="font-size:12.5px">${esc(cl.blurb||'')}</div>`],
+      ...(decisionOf(r)?[['Confidence',Math.round(decisionOf(r).confidence*100)+'%'],['Maturity',esc(decisionOf(r).maturity)],['Needs attention',decisionOf(r).attention>=.9?'<span class="warn">Probably. Finish it, archive it or delete it.</span>':'No'],
+      ['Also considered',Object.entries(decisionOf(r).probs||{}).filter(([k])=>k!==decisionOf(r).category).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([k,v])=>esc(k)+' '+Math.round(v*100)+'%').join(' · ')||'—']]:[])])}
   <div class="sec">Related (${rel.length})</div>${rel.map(({o,e})=>`<div class="rel" onclick='pick(${JSON.stringify(o.full_name)})'><i class="dot" style="background:${EDGE[e.type][0]}"></i><b>${esc(o.name)}</b><small>${esc(e.why)}</small></div>`).join('')||'<div class="muted" style="font-size:13px">No relationships detected.</div>'}
   <div class="row" style="margin-top:20px"><button class="btn primary" onclick='readInto(${JSON.stringify(r.full_name)})'>Read this repo</button><button class="btn" onclick='go("build",${JSON.stringify(r.full_name)})' ${r.write?'':'disabled title="needs write access"'}>Build a feature</button></div>
   <div id="detail" style="margin-top:18px"></div>`;
@@ -478,24 +544,62 @@ async function startBuild(){
 async function startReview(repo,pr){try{const c=await api('/api/pr/check?url='+encodeURIComponent(repo+'#'+pr));const r=await post('/api/review',{repo:c.repo,pr:c.number,comment:false});closeDrawer();openRun(r.run_id)}catch(e){toast(e.message)}}
 
 const STAGES={build:[['ticket','Request'],['spec','Spec'],['plan','Plan'],['tests_red','Tests red'],['implement','Implement'],['tests_green','Green'],['inspect','Inspect'],['pr','PR'],['human_review','Review'],['merged','Merged']],
- review:[['received','Received'],['map_clauses','Map clauses'],['generate_tests','Generate'],['run_tests','Run'],['verdict','Verdict'],['comment','Comment']]};
+ review:[['received','Received'],['understand','Understand'],['rubric','Score'],['investigate','Investigate'],['prove','Prove'],['verdict','Verdict'],['comment','Report']]};
 async function openRun(id){
-  if(ES){ES.close()} if(GR){GR.stop();GR=null} closeDrawer(); app.classList.remove('wide');
+  stopBg();if(ES){ES.close()} if(GR){GR.stop();GR=null} closeDrawer(); app.classList.remove('wide');
   const info=await api('/api/runs/'+id),kind=info.run.kind;
-  app.innerHTML=`<h2>${kind==='build'?'✦ '+esc(info.run.feature):'◎ Review '+esc(info.run.feature)}</h2><p class="sub mono" style="font-size:12.5px">${esc(info.run.repo)} · run ${esc(id)}</p>
-  <div class="rail" id="rail">${STAGES[kind].map(([k,l])=>`<span class="st2" data-s="${k}">${l}</span>`).join('')}</div><div class="feed" id="feed"></div>`;
-  const ctx={clauses:{},id};ES=new EventSource('/api/runs/'+id+'/stream');
-  ES.onmessage=m=>render(JSON.parse(m.data),ctx);ES.addEventListener('end',()=>{ES.close();ES=null});
+  app.innerHTML=`<h2>${kind==='build'?'✦ '+esc(info.run.feature):'◎ Review · '+esc(info.run.feature)}</h2><p class="sub mono" style="font-size:12.5px">${esc(info.run.repo)} · run ${esc(id)}</p>
+  <div class="track" id="rail">${STAGES[kind].map(([k,l],i)=>`${i?'<i class="tc"></i>':''}<span class="tn" data-s="${k}"><b></b><em>${l}</em></span>`).join('')}</div>
+  <div class="scan" id="scan"><i></i>working…</div><div class="feed" id="feed"></div>`;
+  const ctx={clauses:{},id,kind};ES=new EventSource('/api/runs/'+id+'/stream');
+  ES.onmessage=m=>render(JSON.parse(m.data),ctx);ES.addEventListener('end',()=>{ES.close();ES=null;const sc=$('#scan');if(sc)sc.remove();if(location.hash.endsWith(':top'))scrollTo(0,0)});
 }
 function rail(e){
-  const el=document.querySelector(`.st2[data-s="${e.stage}"]`);if(!el)return;
-  const all=[...document.querySelectorAll('.st2')],idx=all.indexOf(el);all.slice(0,idx).forEach(p=>{if(!p.classList.contains('failed'))p.className='st2 done'});
-  el.className='st2 '+({started:'active',progress:'active',done:'done',failed:'failed',waiting_human:'wait'}[e.status]||'active');
+  const el=document.querySelector(`.tn[data-s="${e.stage}"]`);if(!el)return;
+  const nodes=[...document.querySelectorAll('.tn')],cons=[...document.querySelectorAll('.tc')],i=nodes.indexOf(el);
+  const st={started:'active',progress:'active',done:'done',failed:'failed',waiting_human:'wait'}[e.status]||'active';
+  nodes.slice(0,i).forEach(n=>{if(!n.classList.contains('failed'))n.className='tn done'});
+  cons.forEach((c,k)=>c.className='tc'+(k<i-1?' on':(k===i-1?(st==='active'?' flow':' on'):'')));
+  el.className='tn '+st;
+  const sc=$('#scan');if(sc)sc.classList.toggle('hide',st==='wait'||(st==='done'&&['merged','comment'].includes(e.stage)));
 }
+const kv=rows=>`<dl class="kv">${rows.filter(r=>r[1]!==''&&r[1]!=null).map(([k,v,c])=>`<dt>${esc(k)}</dt><dd class="${c||''}">${v}</dd>`).join('')}</dl>`;
+function countUp(){document.querySelectorAll('.cnt').forEach(el=>{if(el.dataset.done)return;el.dataset.done=1;const n=+el.dataset.n;let i=0;const step=()=>{i++;el.textContent=Math.min(n,Math.round(n*i/20));if(i<20)requestAnimationFrame(step)};step()})}
+function findingHtml(x){
+  const proof=x.status==='proven'?`<pre class="out" style="margin:0">${esc(x.proof)}</pre>`:esc(x.proof||'Not executed');
+  const refs=(x.spec_refs||[]).map(r=>`${esc(r.source)} — “${esc(r.quote)}”`).join('<br>');
+  return `<div class="fh"><span class="sev ${x.severity.toLowerCase()}">${esc(x.severity)}</span><span>${esc(x.category)}</span><span>${esc(x.effort||'')}</span><span class="badge ${x.status}">${x.status==='proven'?'proven by a failing test':'heads-up · not proven'}</span></div>
+  <h4>${esc(x.title)}</h4>${kv([['Where',`<span class="mono" style="font-size:12.5px">${esc(x.where)}</span>`],['Why it matters',esc(x.why)],['Proof',proof],['Spec',refs],['Fix',esc(x.fix)]])}`}
+function renderReview(e,d,ctx){
+  const s=e.stage;
+  if(e.status==='started'||s==='investigate'||(s==='prove'&&e.status!=='failed'))return true;
+  if(s==='received'&&e.status==='done'){add(`<div class="lbl">Pull request</div>${kv([['Title',esc(d.title)],['Author',esc(d.author)],['Size',`${d.files} file(s) · <span style="color:var(--green)">+${d.additions}</span> <span style="color:var(--red)">−${d.deletions}</span>`],['Scope',esc((e.detail||'').replace('Scope: ',''))]])}`);return true}
+  if(s==='understand'&&e.status==='done'){add(`<div class="lbl">What changed</div><p class="lead">${esc(d.summary)}</p>`);return true}
+  if(s==='rubric'&&e.status==='done'){
+    const all=[...(d.probs||[])].sort((a,b)=>b.p-a.p),prim=(d.primary||{}).choice,rows=all.filter(r=>r.p>=.5).slice(0,5),rest=all.filter(r=>!rows.includes(r));
+    const col=({Low:'var(--green)',Moderate:'var(--amber)',High:'#ff8a5b',Severe:'var(--red)'})[d.risk.label]||'var(--text)';
+    const el=add(`<div class="lbl">Review rubric · decided by ${esc(d.via||'decision model')}</div>${kv([['Risk',`<b style="color:${col}">${esc(d.risk.label)}</b>`],['Main concern',esc(((d.probs||[]).find(r=>r.id===prim)||{}).name||'none')],['Flagged',rows.length?`${rows.length} of ${all.length} categories`:'none']])}
+      ${rows.length?`<div class="bars" style="margin-top:26px">${rows.map(r=>`<div class="bar-r ${r.id===prim?'top':''}"><span class="n">${esc(r.name)}</span><span class="tr"><span class="fl" data-w="${Math.round(r.p*100)}"></span></span><span class="pc">${Math.round(r.p*100)}%</span></div>`).join('')}</div>`:''}
+      ${rest.length?`<div class="muted" style="font-size:13px;margin-top:22px">Not flagged: ${rest.map(r=>esc(r.name)).join(', ')}</div>`:''}`);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>el.querySelectorAll('.fl').forEach(f=>f.style.width=f.dataset.w+'%')));return true}
+  if(s==='investigate'&&e.status==='done'){add(`<div class="t">· ${esc(e.title)}</div>`,'small');return true}
+  if(s==='prove'&&(e.status==='progress'||e.status==='done')){add(`<div class="t">· ${esc(e.title)} <span class="muted">${esc(e.detail&&!e.detail.startsWith('Not')?'':e.detail||'')}</span></div>`,'small');return true}
+  if(s==='verdict'&&d.findings){
+    const f=d.findings,n=k=>f.filter(x=>x.status===k).length,t=d.tests||{};
+    add(`<div class="vcard ${d.verdict.tone}"><div class="vtitle"><i></i>${esc(d.verdict.label)}</div>${kv([
+      ['Verdict',esc(d.verdict.label),d.verdict.tone],['Risk',esc(d.risk.label)],
+      ['Problems proven',`<b class="cnt" data-n="${n('proven')}">0</b>`,n('proven')?'bad':'good'],['Heads-up',`<b class="cnt" data-n="${n('headsup')}">0</b>`,n('headsup')?'warn':''],
+      ['Checked and cleared',`<b class="cnt" data-n="${n('cleared')}">0</b>`],['Tests executed',`<b class="cnt" data-n="${t.run||0}">0</b> · <b class="cnt" data-n="${t.failed||0}">0</b> failed`],
+      ['Scope',esc((d.scope||'').replace('Scope: ',''))]])}</div>`,'','start');countUp();
+    f.filter(x=>x.status!=='cleared').forEach(x=>add(findingHtml(x),'finding sev-'+x.severity.toLowerCase(),false));
+    const cl=f.filter(x=>x.status==='cleared');if(cl.length)add(`<div class="lbl">Checked and cleared</div>${kv(cl.map(x=>[x.category,`${esc(x.title)} — ${esc(x.proof)}`]))}`,'',false);
+    const sc=$('#scan');if(sc)sc.remove();return true}
+  return false}
 const clauseHtml=c=>`<div class="clause"><span class="lv ${esc((c.level||'').replace(' ',''))}">${esc(c.level)}</span><b>${esc(c.id)}</b> <span class="meta">${esc(c.source)}</span><q>${esc(c.quote)}</q><span class="meta">${esc(c.requirement||'')}</span></div>`;
-function add(html,cls=''){const f=$('#feed');const d=document.createElement('div');d.className='ev '+cls;d.innerHTML=html;f.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'nearest'});return d}
+function add(html,cls='',sc){const f=$('#feed');const d=document.createElement('div');d.className='ev '+cls;d.innerHTML=html;f.appendChild(d);if(sc!==false)d.scrollIntoView({behavior:'smooth',block:sc==='start'?'start':'nearest'});return d}
 function render(e,ctx){
   rail(e);const d=e.data||{};
+  if(ctx.kind==='review'&&renderReview(e,d,ctx))return;
   if(e.status==='progress'&&!d.diff_preview&&!d.violations)return add(`<div class="t">· ${esc(e.title)} <span class="muted">${esc(e.detail)}</span></div>`,'small');
   if(e.status==='started')return add(`<div class="t">… ${esc(e.title)}</div>`,'small');
   if(d.clauses)d.clauses.forEach(c=>ctx.clauses[c.id]=c);

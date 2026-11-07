@@ -227,8 +227,8 @@ def repo_highlights(owner: str, name: str, v: dict = Depends(viewer)):
         {"label": "Tests", "ok": has_tests, "detail": "tests folder found" if has_tests else "no tests folder found"},
         {"label": "CI", "ok": has_ci, "detail": "GitHub Actions workflows" if has_ci else "no workflows found"},
         {"label": "License", "ok": bool(r.license), "detail": r.license.name if r.license else "none declared"},
-        {"label": "Specs", "ok": has_specs, "detail": "specs/ folder found: SpecGuard can build and review here" if has_specs
-         else "no specs/ folder: SpecGuard has nothing to check code against"},
+        {"label": "Specs", "ok": True if has_specs else None, "detail": "specs/ folder found: reviews also check spec conformance" if has_specs
+         else "none (optional): reviews still run with the benchmark rubric"},
         {"label": "Open PRs", "ok": None, "detail": f"{len(prs)}{'+' if len(prs) == 10 else ''} open"},
     ]
     prompt = f"""Describe this GitHub repository for a developer deciding whether to use or contribute to it.
@@ -268,10 +268,7 @@ def pr_check(url: str, v: dict = Depends(viewer)):
     _public_only(r, v)
     if pr.state != "open":
         raise HTTPException(409, f"PR #{number} is {'merged' if pr.merged else 'closed'}. SpecGuard reviews open PRs. Paste one that is still open.")
-    if not _has_dir(r, "specs"):
-        raise HTTPException(422, f"{full} has no specs/ folder, so there is nothing to check this PR against. "
-                                 "SpecGuard reviews code against written specs (RFCs, API contracts) kept as markdown under specs/.")
-    return {"ok": True, "repo": full, "number": number, "title": pr.title, "author": pr.user.login, "files": pr.changed_files}
+    return {"ok": True, "repo": full, "number": number, "title": pr.title, "author": pr.user.login, "files": pr.changed_files, "size": r.size}
 
 
 # ---------- runs ----------

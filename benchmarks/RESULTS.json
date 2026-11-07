@@ -1,0 +1,127 @@
+{
+ "top1_primary_concern": "7/9",
+ "detection": "7/7",
+ "clean_specificity": "2/2",
+ "avg_extra_categories_on_bad_cases": 3.29,
+ "via": "subq-snap-1.1",
+ "rows": [
+  {
+   "case": "sec-signature",
+   "expected": "security",
+   "ok": true,
+   "risk": "Severe",
+   "flagged": [
+    "correctness",
+    "security",
+    "error_handling",
+    "api",
+    "tests"
+   ],
+   "primary": "security",
+   "p_expected": 1.0
+  },
+  {
+   "case": "err-swallow",
+   "expected": "error_handling",
+   "ok": true,
+   "risk": "High",
+   "flagged": [
+    "correctness",
+    "error_handling",
+    "api",
+    "stability",
+    "tests"
+   ],
+   "primary": "error_handling",
+   "p_expected": 1.0
+  },
+  {
+   "case": "perf-quadratic",
+   "expected": "performance",
+   "ok": true,
+   "risk": "Moderate",
+   "flagged": [
+    "performance"
+   ],
+   "primary": "performance",
+   "p_expected": 1.0
+  },
+  {
+   "case": "api-rename",
+   "expected": "api",
+   "ok": true,
+   "risk": "Moderate",
+   "flagged": [
+    "api",
+    "stability",
+    "tests"
+   ],
+   "primary": "api",
+   "p_expected": 1.0
+  },
+  {
+   "case": "tests-removed",
+   "expected": "tests",
+   "ok": true,
+   "risk": "Severe",
+   "flagged": [
+    "correctness",
+    "security",
+    "error_handling",
+    "api",
+    "tests"
+   ],
+   "primary": "error_handling",
+   "p_expected": 1.0
+  },
+  {
+   "case": "config-ci",
+   "expected": "config",
+   "ok": true,
+   "risk": "Severe",
+   "flagged": [
+    "security",
+    "stability",
+    "performance",
+    "tests",
+    "config"
+   ],
+   "primary": "security",
+   "p_expected": 1.0
+  },
+  {
+   "case": "stab-retry",
+   "expected": "stability",
+   "ok": true,
+   "risk": "High",
+   "flagged": [
+    "correctness",
+    "error_handling",
+    "api",
+    "stability",
+    "performance",
+    "tests"
+   ],
+   "primary": "stability",
+   "p_expected": 1.0
+  },
+  {
+   "case": "clean-docstring",
+   "expected": "none (clean)",
+   "ok": true,
+   "risk": "Low",
+   "flagged": [],
+   "primary": "none",
+   "p_expected": null
+  },
+  {
+   "case": "clean-rename-local",
+   "expected": "none (clean)",
+   "ok": true,
+   "risk": "Low",
+   "flagged": [],
+   "primary": "none",
+   "p_expected": null
+  }
+ ]
+}

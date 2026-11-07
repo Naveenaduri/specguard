@@ -3,7 +3,7 @@ import re
 import threading
 from pathlib import Path
 
-from . import events, gh, llm, review, sandbox, spec, testgen
+from . import events, gh, llm, review, rubric, sandbox, spec, testgen
 
 WORK = Path(".specguard/work")
 RUN_SLOTS = threading.Semaphore(2)  # global queue: max 2 concurrent runs
@@ -342,7 +342,15 @@ def run_review(run_id, repo, pr_number, token, comment=False):
         events.update_run(run_id, status="failed")
 
 
+def _has_specs(gr) -> bool:
+    try:
+        return bool(gr.get_contents("specs"))
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _run_review(E, run_id, repo, pr_number, token, comment):
+    """Review any PR: no specs required. Specs, when present, add a conformance check on top."""
     g = gh.client(token)
     acc = gh.access(g, repo)
     if not acc["read"]:
@@ -354,23 +362,76 @@ def _run_review(E, run_id, repo, pr_number, token, comment):
     changed = [f.filename for f in files]
     diff = "\n".join(f"--- {f.filename}\n{f.patch or ''}" for f in files)
     scope = review.scope_check(changed, write=acc["write"])
+    meta = {"title": pr.title, "body": pr.body or "", "files": len(files), "additions": pr.additions,
+            "deletions": pr.deletions, "author": pr.user.login}
     E("received", "done", f"PR #{pr_number}: {pr.title}", scope["summary"],
-      {"pr_number": pr_number, "pr_url": pr.html_url, "files": changed})
+      {**{k: meta[k] for k in ("title", "files", "additions", "deletions", "author")}, "pr_number": pr_number, "pr_url": pr.html_url,
+       "changed": changed[:40]})
     events.update_run(run_id, pr_url=pr.html_url)
-    work = gh.clone(repo, token, WORK / run_id / "repo")
-    gh.git(work, "fetch", "-q", "origin", f"pull/{pr_number}/head:pr-{pr_number}")
-    gh.git(work, "checkout", "-q", f"pr-{pr_number}")
-    spec_text = spec.load_spec(work)
-    if not spec_text:
-        E("verdict", "done", "No spec in repo; nothing to check", "Add markdown specs under specs/")
-        return
-    clauses = spec.extract_all_clauses(spec_text)
-    result = review.review_changes(work, spec_text, clauses, diff, [c for c in changed if not c.startswith("tests/")],
-                                   lambda stage, status, title, detail="", data=None: E(stage, status, title, detail, data))
-    E("verdict", "done", f"{len(result['violations'])} proven violation(s)" if result["violations"]
-      else f"spec-conformant for {', '.join(result['conformant'] or result['touched']) or 'no clauses touched'}",
-      scope["summary"], {"violations": [{k: v[k] for k in v if k != "test_source"} for v in result["violations"]]})
-    body = review.render_comment(scope, result)
+
+    E("understand", "started", "Reading the change", "")
+    summary = rubric.summarize(meta, diff)
+    E("understand", "done", "What changed", summary, {"summary": summary})
+
+    E("rubric", "started", f"Scoring the change against {len(rubric.RUBRIC)} review categories", "SubQ decision model")
+    state = f"PR title: {meta['title']}\nPR description: {meta['body'][:1500]}\n\nDIFF:\n{diff}"
+    sc = rubric.score_rubric(state)
+    hot = rubric.pick_hot(sc["probs"])
+    E("rubric", "done", f"Risk: {sc['risk']['label']}",
+      ", ".join(rubric.BY_ID[h]["name"] for h in hot) or "No category above the threshold",
+      {"probs": [{"id": c["id"], "name": c["name"], "p": round(sc["probs"].get(c["id"], 0), 2)} for c in rubric.RUBRIC],
+       "risk": sc["risk"], "via": sc["via"], "hot": hot, "primary": sc.get("primary")})
+
+    findings = []
+    if hot:
+        E("investigate", "started", "Looking for concrete problems in the flagged areas", "")
+        findings = rubric.investigate(meta, diff, hot, sc["probs"])
+        E("investigate", "done", f"{len(findings)} possible problem(s) found" if findings else "Nothing concrete to report", "")
+    else:
+        E("investigate", "done", "Nothing stood out", "")
+
+    py = any(c.endswith(".py") for c in changed)
+    specs = _has_specs(gr)
+    can_run = py and gr.size <= rubric.SANDBOX_MAX_KB
+    tests = {"run": 0, "failed": 0}
+    work = None
+    if (findings and can_run) or specs:
+        E("prove", "started", "Preparing a sandbox to execute tests", "")
+        work = gh.clone(repo, token, WORK / run_id / "repo")
+        gh.git(work, "fetch", "-q", "origin", f"pull/{pr_number}/head:pr-{pr_number}")
+        gh.git(work, "checkout", "-q", f"pr-{pr_number}")
+    if findings and work and can_run:
+        t = rubric.prove(work, findings, review.adjudicate, lambda stage, status, title, detail="", data=None: E("prove", status, title, detail, data))
+        tests.update(t)
+    else:
+        why = ("this repository is too large for the test sandbox" if py and not can_run else
+               "SpecGuard executes tests for Python projects today" if not py else "nothing to test")
+        for f in findings:
+            f["proof"] = f"Not executed: {why}"
+    if specs and work:
+        spec_text = spec.load_spec(work)
+        if spec_text:
+            res = review.review_changes(work, spec_text, spec.extract_all_clauses(spec_text), diff,
+                                        [c for c in changed if not c.startswith("tests/")], lambda *a, **k: None)
+            anchor = next((f for f in findings if f["status"] == "proven"), None)
+            for v in res["violations"]:
+                tests["run"] += 1
+                tests["failed"] += 1
+                if anchor:  # same defect already reported: the spec clause backs it up instead of becoming a second problem
+                    anchor.setdefault("spec_refs", []).append({"source": v["source"], "quote": v["quote"]})
+                else:
+                    findings.append({"id": f"F{len(findings) + 1}", "category": "Spec conformance", "severity": "Major",
+                                     "title": f"Breaks {v['source']}", "where": v["clause_id"], "why": f"The spec says: {v['quote']}",
+                                     "fix": v.get("suggested_fix", ""), "effort": "Quick win", "testable": True, "status": "proven",
+                                     "proof": v["output_snippet"], "test_name": v["test_name"]})
+    E("prove", "done", f"{tests['run']} test(s) executed, {tests['failed']} failed" if tests["run"] else "No tests executed",
+      "" if tests["run"] else (findings[0]["proof"] if findings else ""), {"tests": tests})
+
+    verdict = rubric.verdict_for(findings)
+    card = {"verdict": verdict, "risk": sc["risk"], "summary": summary, "findings": findings, "tests": tests,
+            "scope": scope["summary"], "hot": hot, "specs": specs, "meta": {k: meta[k] for k in ("title", "files", "additions", "deletions", "author")}}
+    E("verdict", "failed" if verdict["tone"] == "bad" else "done", verdict["label"], scope["summary"], card)
+    body = rubric.render_comment(card)
     if comment:
         pr.create_issue_comment(body)
         E("comment", "done", "Posted review to the PR", pr.html_url, {"pr_number": pr_number, "pr_url": pr.html_url})
