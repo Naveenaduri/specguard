@@ -47,6 +47,9 @@ main{max-width:1200px;margin:0 auto;padding:36px 28px 120px}
 main.wide{max-width:none;padding:18px 22px 24px}
 h1,h2,h3{margin:0;letter-spacing:-.02em} h2{font-size:26px;font-weight:700} .sub{color:var(--muted);margin:6px 0 22px}
 label{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:16px 0 7px;font-family:var(--mono)}
+select{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--line2);color:var(--text);border-radius:11px;padding:12px 14px;font:inherit;font-family:var(--mono);font-size:13.5px}
+select:focus{outline:0;border-color:var(--cyan)}
+.rinfo{margin-top:14px;border:1px solid var(--line);background:var(--glass);border-radius:14px;padding:16px 18px;line-height:1.55} .rinfo b{font-size:15px} .rinfo p{margin:6px 0 10px;color:var(--muted);font-size:13.5px}
 input,textarea{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--line2);color:var(--text);border-radius:11px;padding:11px 14px;font:inherit}
 input:focus,textarea:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(56,225,255,.14)}
 textarea{min-height:90px;resize:vertical}
@@ -381,6 +384,13 @@ let TGT='',PHT=null;
 const PH=['github.com/open-telemetry','github.com/owner/repo','github.com/owner/repo/pull/123'];
 function rotatePh(){clearInterval(PHT);let i=0;PHT=setInterval(()=>{const els=document.querySelectorAll('[data-ph]');if(!els.length){clearInterval(PHT);return}i=(i+1)%PH.length;els.forEach(e=>{if(!e.value)e.placeholder=PH[i]})},2600)}
 function setTgt(v){TGT=v||'';const b=$('#tgt');b.classList.remove('hide');$('#tgtv').textContent=TGT||(ME?ME.login+' (my repos)':'pick a target')}
+const RC={};
+async function ownerRepos(owner){const k=(owner||'@me').toLowerCase();if(!RC[k])RC[k]=await api('/api/owner/'+encodeURIComponent(owner||'@me')+'/repos');return RC[k]}
+const optsHtml=(rs,sel,first)=>(first?`<option value="">${first}</option>`:'')+rs.map(r=>`<option value="${esc(r.full_name)}" ${r.full_name===sel?'selected':''}>${esc(r.name)}${r.description?' — '+esc(r.description.slice(0,60)):''}</option>`).join('');
+function repoInfo(r,build){
+  const wr=build?(r.write?'<span class="pill ok">you can push — PR from a branch</span>':'<span class="pill cy">read-only — we fork, PR from your fork</span>'):(r.write?'<span class="pill ok">you can write</span>':'<span class="pill">read-only</span>');
+  return `<div class="rinfo"><b>${esc(r.full_name)}</b> ${r.private?'<span class="pill no">private</span>':''}${r.archived?'<span class="pill">archived</span>':''}<p>${esc(r.description||'No description.')}</p>
+  <div class="row" style="gap:8px;flex-wrap:wrap">${r.language?`<span class="pill"><i class="dot" style="background:${langColor(r.language)}"></i>${esc(r.language)}</span>`:''}<span class="pill">★ ${r.stars}</span><span class="pill">pushed ${ago(r.pushed_at)}</span><span class="pill">${r.issues} open issues</span>${wr}</div></div>`}
 function openTarget(){
   if($('#tmodal'))return;
   const m=document.createElement('div');m.id='tmodal';
@@ -588,9 +598,9 @@ function readView(){
 /* ---------- pull requests: grouped, or paste a link ---------- */
 function prsView(arg){
   const raw=arg||TGT||(ME?ME.login:'');setTgt(raw);
-  app.innerHTML=`<h2>Pull requests</h2><p class="sub">${raw?'Open pull requests for <b class="mono">github.com/'+esc(raw)+'</b>, ranked by how much review they need.':'Choose a GitHub owner, repo or pull request to see what needs review.'} Change it any time from the pill at the top.</p><div id="pout" style="margin-top:36px;max-width:920px"></div>`;
+  app.innerHTML=`<h2>Pull requests</h2><p class="sub">${raw?'Open pull requests for <b class="mono">github.com/'+esc(raw)+'</b>, ranked by how much review they need.':'Choose a GitHub owner, repo or pull request to see what needs review.'} Change it any time from the pill at the top.</p><div id="psel-wrap"></div><div id="pout" style="margin-top:36px;max-width:920px"></div>`;
   if(!raw){$('#pout').innerHTML='<button class="btn primary" onclick="openTarget()">Choose a target</button>';return}
-  prsGo(raw)}
+  prsGo(raw);const t0=parseTarget(raw);if(t0.owner&&!t0.pr)ownerRepos(t0.owner.toLowerCase()===(ME&&ME.login.toLowerCase())?'':t0.owner).then(d=>{$('#psel-wrap').innerHTML=`<select id="psel" style="max-width:520px;margin-top:22px" onchange="go('prs',this.value||'${esc(t0.owner)}')">${optsHtml(d.repos,t0.repo||'','All repositories of '+esc(t0.owner))}</select>${t0.repo?'<div id="pinfo" style="max-width:520px"></div>':''}`;const r=d.repos.find(x=>x.full_name.toLowerCase()===(t0.repo||'').toLowerCase());if(r)$('#pinfo').innerHTML=repoInfo(r,false)}).catch(()=>{})}
 async function prsGo(raw){
   const t=parseTarget(raw),o=$('#pout');
   if(!t.owner){o.innerHTML='<div class="ferr">Enter an owner, owner/repo, or an open PR link.</div>';return}
@@ -617,17 +627,23 @@ function prsHtml(d){
 async function buildView(repo){
   if(!ME){app.innerHTML=`<h2>Build a feature</h2><p class="sub">SpecGuard writes the tests first, implements until they pass, and opens a PR with the proof.</p>
     <div class="panel" style="max-width:640px"><p style="margin:0 0 20px">Building opens a pull request in your name, so it needs a GitHub sign-in. Exploring and reviewing do not.</p><a class="btn primary" style="text-decoration:none" href="${SIGNIN}">Sign in with GitHub</a></div>`;return}
+  const t=parseTarget(repo||TGT||''),owner=(t.owner&&t.owner.toLowerCase()!==ME.login.toLowerCase())?t.owner:'';
+  setTgt(t.repo||t.owner||'');
   app.innerHTML=`<h2>Build a feature</h2><p class="sub">Written test-first, proven, then opened as a PR. No write access? SpecGuard forks the repo and opens the PR from your fork.</p>
-  <div class="panel" style="max-width:760px"><label style="margin-top:0">GitHub repository</label>${repoField('brepo',repo||SELECTED||'','rl2')}<datalist id="rl2"></datalist>
-  <div id="mine" class="try" style="margin-top:0"></div>
+  <div class="panel" style="max-width:760px"><label style="margin-top:0">Repository · <span class="mono">${esc(owner||ME.login)}</span></label><select id="bsel" onchange="bPick()"><option>Loading repositories…</option></select><div id="binfo"></div><div class="ferr" id="brepoErr"></div>
   <label>What should it do?</label><textarea id="bfeat" placeholder="e.g. add audience (aud) claim validation to decode"></textarea>
   <p class="muted" style="font-size:12.5px;margin:12px 0 0">If the repo has a specs/ folder, requirements are cited from it. Otherwise they are derived from your request.</p>
   <div class="row" style="margin-top:20px"><button class="btn primary" id="bgo" onclick="startBuild()">Start build</button></div><div id="berr"></div></div>`;
-  loadGraph().then(g=>{const rs=[...g.repos].sort((a,b)=>(b.write-a.write)||(new Date(b.pushed_at)-new Date(a.pushed_at))).slice(0,8);
-    $('#mine').innerHTML='Your repos '+rs.map(r=>`<button type="button" onclick="fillT('brepo','${esc(r.full_name)}')">${esc(r.name)}</button>`).join('')}).catch(()=>{});
+  try{const d=await ownerRepos(owner);BR=d.repos;
+    if(t.repo&&!BR.some(r=>r.full_name.toLowerCase()===t.repo.toLowerCase()))BR=[{full_name:t.repo,name:t.repo.split('/')[1],description:'',language:'',stars:0,issues:0,pushed_at:'',write:false},...BR];
+    const pre=t.repo?(BR.find(r=>r.full_name.toLowerCase()===t.repo.toLowerCase())||{}).full_name:'';
+    $('#bsel').innerHTML=optsHtml(BR,pre,'Choose a repository…');bPick()}
+  catch(e){$('#bsel').innerHTML='<option value="">Could not load repositories</option>';$('#brepoErr').textContent=e.message}
 }
+let BR=[];
+function bPick(){const v=$('#bsel').value,r=BR.find(x=>x.full_name===v);$('#binfo').innerHTML=r?repoInfo(r,true):'';if(v){setTgt(v);setCtx(v)}}
 async function startBuild(){
-  const repo=normRepo($('#brepo').value),feature=$('#bfeat').value.trim();if(!repo){$('#brepoErr').textContent='Enter it as owner/repo — for example Naveenaduri/tinyjwt';return}$('#brepoErr').textContent='';if(!feature){$('#berr').innerHTML='<div class="notice">Describe the feature you want.</div>';return}
+  const repo=$('#bsel').value,feature=$('#bfeat').value.trim();if(!repo){$('#brepoErr').textContent='Choose a repository first.';return}$('#brepoErr').textContent='';if(!feature){$('#berr').innerHTML='<div class="notice">Describe the feature you want.</div>';return}
   $('#bgo').disabled=true;try{const r=await post('/api/build',{repo,feature});openRun(r.run_id)}catch(e){$('#berr').innerHTML=`<div class="notice">${esc(e.message)}</div>`;$('#bgo').disabled=false}
 }
 async function startReview(repo,pr){try{const c=await api('/api/pr/check?url='+encodeURIComponent(repo+'#'+pr));const r=await post('/api/review',{repo:c.repo,pr:c.number,comment:false});closeDrawer();openRun(r.run_id)}catch(e){toast(e.message)}}

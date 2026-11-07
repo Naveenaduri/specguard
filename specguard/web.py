@@ -188,6 +188,29 @@ def repos(u: dict = Depends(user)):
     return _repo_rows(gh.client(u["token"]))
 
 
+@app.get("/api/owner/{owner}/repos")
+def owner_repos(owner: str, v: dict = Depends(viewer)):
+    """Light repo list for pickers (no categorisation). '@me' means the signed-in user, including private repos."""
+    me = "" if v.get("anon") else v["login"]
+    if owner == "@me":
+        if not me:
+            raise HTTPException(400, "Sign in with GitHub to list your repositories.")
+        owner = ""
+    elif not owner.replace("-", "").replace("_", "").replace(".", "").isalnum():
+        raise HTTPException(400, "That doesn't look like a GitHub user or organisation name.")
+    key = (v["login"], owner.lower() or me.lower(), "list")
+    hit = _GRAPH_CACHE.get(key)
+    if hit and time.time() - hit[0] < 600:
+        return hit[1]
+    rows = _repo_rows(gh.client(v["token"]), owner, me)
+    if v.get("anon"):
+        for r in rows:
+            r["write"] = False
+    out = {"owner": owner or me, "repos": rows}
+    _GRAPH_CACHE[key] = (time.time(), out)
+    return out
+
+
 @app.get("/api/graph")
 def repo_graph(refresh: int = 0, owner: str = "", v: dict = Depends(viewer)):
     owner = owner.strip()
