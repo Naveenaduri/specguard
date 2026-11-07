@@ -280,7 +280,12 @@ def _run_build(E, run_id, repo, feature, token, user, auto, merge, dry=False):
     body = (f"## SpecGuard evidence — {feature}\n\n{evidence_table(all_rows)}\n"
             f"{scope['summary']}\n\nRun: {run_id}\n")
     gr = g.get_repo(repo)
-    pr = gr.create_pull(title=f"feat: {feature[:70]}", body=body, head=branch, base=acc["default_branch"])
+    existing = list(gr.get_pulls(state="open", head=f"{gr.owner.login}:{branch}"))
+    if existing:  # a retry of the same feature: update the open PR instead of failing
+        pr = existing[0]
+        pr.edit(body=body)
+    else:
+        pr = gr.create_pull(title=f"feat: {feature[:70]}", body=body, head=branch, base=acc["default_branch"])
     events.update_run(run_id, pr_url=pr.html_url)
     E("pr", "done", f"PR #{pr.number} opened", pr.html_url, {"pr_number": pr.number, "pr_url": pr.html_url})
 
@@ -302,13 +307,19 @@ def _run_build(E, run_id, repo, feature, token, user, auto, merge, dry=False):
         rnd += 1
         E("revise", "started", f"Round {rnd}: revising from feedback", d["text"])
         new = spec.pick_feature_clauses(feature, spec_text, d["text"], clauses)
-        old_ids = {c["id"] for c in clauses}
-        added = [c for c in new if c["id"] not in old_ids or c["quote"] not in {o["quote"] for o in clauses}] or new
+        old_req = {c["id"]: c.get("requirement") for c in clauses}
+        added = [c for c in new if c["id"] not in old_req or c.get("requirement") != old_req[c["id"]]] or new
         clauses = new
         E("spec", "done", f"Round {rnd}: {len(added)} new/changed clause(s)", "", {"clauses": clauses})
         plan = make_plan(feature, clauses, gh.repo_files(work))
-        ok, rows, files, _ = _tdd_cycle(E, work, feature, added, plan, rnd)
+        ok, rows, files, discarded = _tdd_cycle(E, work, feature, added, plan, rnd)
         if not ok:
+            if discarded and all("non-discriminating" in d["why"] for d in discarded):
+                msg = (f"Round {rnd}: the feedback is already satisfied by the current implementation — "
+                       f"{len(discarded)} new test(s) passed before any change, so they were discarded as non-discriminating. No code change needed.")
+                pr.create_issue_comment("### SpecGuard\n\n" + msg)
+                E("pr", "done", f"Round {rnd}: already satisfied, nothing to change", msg, {"pr_number": pr.number, "pr_url": pr.html_url})
+                continue
             E("pr", "failed", f"Round {rnd} did not reach green", "")
             return
         gh.git(work, "add", "-A")

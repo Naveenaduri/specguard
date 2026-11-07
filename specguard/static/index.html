@@ -5,269 +5,414 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SpecGuard</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0a0e16; --bg2:#101624; --card:#141c2e; --line:#243049; --text:#e8edf7; --muted:#8b97b1;
-  --accent:#7c6cff; --green:#2ee6a6; --red:#ff4d6d; --amber:#ffb454; --blue:#4db8ff;
-  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-}
-@media (prefers-color-scheme: light){
-  :root:not([data-theme="dark"]){--bg:#f4f6fb;--bg2:#fff;--card:#fff;--line:#dbe1ee;--text:#121a2b;--muted:#5d6985;}
+  --bg:#05070d; --bg2:#0a0f1a; --glass:rgba(255,255,255,.035); --glass2:rgba(255,255,255,.06);
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.14);
+  --text:#e8edf8; --muted:#7d8aa5; --dim:#4c5871;
+  --cyan:#38e1ff; --violet:#8b7bff; --green:#3dffb0; --red:#ff4d73; --amber:#ffc15a;
+  --sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
 }
 *{box-sizing:border-box} html,body{margin:0;height:100%}
-body{background:radial-gradient(1200px 600px at 80% -10%,#1a2347 0%,transparent 60%),var(--bg);color:var(--text);
-  font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
-a{color:var(--blue)} button{font:inherit;cursor:pointer}
-header{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20}
-.logo{font-weight:800;font-size:20px;letter-spacing:.2px;display:flex;gap:8px;align-items:center;cursor:pointer}
-.logo b{background:linear-gradient(90deg,var(--accent),var(--green));-webkit-background-clip:text;background-clip:text;color:transparent}
-.tag{color:var(--muted);font-size:13px} .sp{flex:1}
-.chip{display:flex;align-items:center;gap:8px;padding:4px 10px 4px 4px;border:1px solid var(--line);border-radius:99px;background:var(--bg2)}
-.chip img{width:26px;height:26px;border-radius:50%}
-.btn{border:1px solid var(--line);background:var(--bg2);color:var(--text);padding:9px 16px;border-radius:10px;font-weight:600;transition:.15s}
-.btn:hover{border-color:var(--accent);transform:translateY(-1px)}
-.btn.primary{background:linear-gradient(135deg,var(--accent),#5a8bff);border:0;color:#fff}
-.btn.good{background:var(--green);border:0;color:#04281c}
-.btn.bad{background:var(--red);border:0;color:#fff}
-.btn.ghost{background:transparent} .btn:disabled{opacity:.5;cursor:default;transform:none}
-main{max-width:1180px;margin:0 auto;padding:28px 24px 120px}
-.hero{text-align:center;padding:64px 0 24px}
-.hero h1{font-size:44px;line-height:1.1;margin:0 0 14px;letter-spacing:-.5px}
-.hero p{color:var(--muted);max-width:620px;margin:0 auto 28px;font-size:17px}
-.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:26px}
-.action{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:26px;text-align:left;color:var(--text);transition:.2s;position:relative;overflow:hidden}
-.action:hover{transform:translateY(-4px);border-color:var(--accent);box-shadow:0 14px 40px -18px var(--accent)}
-.action .ic{font-size:30px} .action h3{margin:10px 0 6px;font-size:20px} .action p{margin:0;color:var(--muted);font-size:14px}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
-h2{margin:0 0 4px;font-size:24px} .sub{color:var(--muted);margin:0 0 18px}
+body{background:var(--bg);color:var(--text);font:14.5px/1.55 var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-2;
+  background:radial-gradient(900px 500px at 85% -10%,rgba(139,123,255,.16),transparent 60%),radial-gradient(800px 500px at -5% 105%,rgba(56,225,255,.10),transparent 60%),var(--bg)}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:56px 56px;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 20%,#000 0%,transparent 72%);mask-image:radial-gradient(ellipse at 50% 20%,#000 0%,transparent 72%)}
+a{color:var(--cyan)} button{font:inherit;cursor:pointer;color:inherit}
+.mono{font-family:var(--mono)} .muted{color:var(--muted)} .hide{display:none!important}
+
+header{display:flex;align-items:center;gap:16px;height:60px;padding:0 28px;position:sticky;top:0;z-index:40;
+  background:rgba(5,7,13,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;letter-spacing:.2px;cursor:pointer}
+.logo svg{width:26px;height:26px}
+.logo b{background:linear-gradient(90deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sp{flex:1}
+nav{display:flex;gap:4px} nav button{background:none;border:0;padding:7px 13px;border-radius:9px;color:var(--muted);font-weight:500}
+nav button:hover,nav button.on{color:var(--text);background:var(--glass2)}
+.chip{display:flex;align-items:center;gap:9px;padding:4px 6px 4px 4px;border:1px solid var(--line);border-radius:99px;background:var(--glass)}
+.chip img{width:26px;height:26px;border-radius:50%} .chip span{font-size:13px;font-weight:500}
+.chip button{background:none;border:0;color:var(--muted);padding:2px 8px;font-size:12px}
+
+.btn{border:1px solid var(--line2);background:var(--glass);color:var(--text);padding:9px 16px;border-radius:10px;font-weight:600;font-size:13.5px;transition:.18s}
+.btn:hover{border-color:var(--cyan);background:var(--glass2)}
+.btn.primary{background:linear-gradient(135deg,#2bc4e8,#7a6bff);border:0;color:#fff;box-shadow:0 8px 28px -10px rgba(122,107,255,.8)}
+.btn.primary:hover{filter:brightness(1.1)}
+.btn.good{background:var(--green);border:0;color:#03271a} .btn.bad{background:var(--red);border:0;color:#fff}
+.btn.sm{padding:5px 11px;font-size:12.5px;border-radius:8px} .btn:disabled{opacity:.4;cursor:not-allowed}
+main{max-width:1200px;margin:0 auto;padding:36px 28px 120px}
+main.wide{max-width:none;padding:18px 22px 24px}
+h1,h2,h3{margin:0;letter-spacing:-.02em} h2{font-size:26px;font-weight:700} .sub{color:var(--muted);margin:6px 0 22px}
+label{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:16px 0 7px;font-family:var(--mono)}
+input,textarea{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--line2);color:var(--text);border-radius:11px;padding:11px 14px;font:inherit}
+input:focus,textarea:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(56,225,255,.14)}
+textarea{min-height:90px;resize:vertical}
+.panel{background:var(--glass);border:1px solid var(--line);border-radius:18px;padding:22px;backdrop-filter:blur(8px)}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-input,textarea,select{width:100%;background:var(--bg2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:11px 13px;font:inherit}
-input:focus,textarea:focus{outline:2px solid var(--accent);border-color:transparent}
-textarea{min-height:84px;resize:vertical}
-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;display:block;margin:12px 0 6px}
-/* explore */
-.explore{display:grid;grid-template-columns:1fr 320px;gap:18px}
-@media(max-width:900px){.explore{grid-template-columns:1fr}}
-#graphWrap{position:relative;background:radial-gradient(600px 300px at 50% 40%,#16204a55,transparent),var(--bg2);border:1px solid var(--line);border-radius:18px;height:560px;overflow:hidden}
-canvas{width:100%;height:100%;display:block}
-.legend{position:absolute;left:14px;bottom:12px;display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);max-width:70%}
-.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
-.hint{position:absolute;right:14px;top:12px;font-size:12px;color:var(--muted);text-align:right}
-.tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px;display:none;z-index:5;max-width:260px}
-.sidebar h3{margin:0 0 4px} .stat{display:flex;gap:14px;color:var(--muted);font-size:13px;margin:6px 0 12px}
-.pill{font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
-.pill.ok{color:var(--green);border-color:var(--green)} .pill.no{color:var(--amber);border-color:var(--amber)}
-pre.sum{white-space:pre-wrap;font:13px/1.55 inherit;color:var(--text);background:var(--bg2);border-radius:10px;padding:12px;margin:10px 0}
-.prs{display:flex;flex-direction:column;gap:6px;margin-top:8px}
-.prs div{display:flex;gap:8px;align-items:center;justify-content:space-between;background:var(--bg2);padding:7px 10px;border-radius:9px;font-size:13px}
-/* run */
-.rail{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 18px}
-.st{display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:99px;border:1px solid var(--line);background:var(--bg2);font-size:13px;color:var(--muted);transition:.3s}
-.st.active{color:var(--text);border-color:var(--accent);box-shadow:0 0 0 3px #7c6cff33;animation:pulse 1.4s infinite}
-.st.done{color:var(--green);border-color:#2ee6a655} .st.failed{color:var(--red);border-color:var(--red)}
-.st.wait{color:var(--amber);border-color:var(--amber)}
-@keyframes pulse{50%{box-shadow:0 0 0 7px #7c6cff10}}
-.feed{display:flex;flex-direction:column;gap:12px}
-.ev{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;animation:in .35s ease}
+.notice{background:rgba(255,193,90,.08);border:1px solid rgba(255,193,90,.35);color:var(--amber);border-radius:12px;padding:12px 15px;margin-top:16px}
+
+/* ---------- hero + home ---------- */
+.hero{text-align:center;padding:70px 0 10px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:18px}
+.hero h1{font-size:clamp(36px,6vw,60px);line-height:1.04;font-weight:800;letter-spacing:-.035em}
+.grad{background:linear-gradient(90deg,var(--cyan),var(--violet) 55%,var(--green));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{color:var(--muted);font-size:17px;max-width:600px;margin:20px auto 30px}
+.cta{display:inline-block;text-decoration:none;padding:14px 28px;font-size:15.5px;border-radius:12px}
+.cards3{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px;margin-top:38px}
+.act{position:relative;text-align:left;background:var(--glass);border:1px solid var(--line);border-radius:20px;padding:26px;transition:.25s;overflow:hidden}
+.act::before{content:"";position:absolute;inset:0;background:radial-gradient(400px 160px at 20% 0%,var(--tint,rgba(56,225,255,.12)),transparent 70%);opacity:.8;transition:.25s}
+.act:hover{transform:translateY(-4px);border-color:var(--line2)} .act:hover::before{opacity:1}
+.act>*{position:relative} .act svg{width:34px;height:34px;color:var(--c,var(--cyan));margin-bottom:16px}
+.act h3{font-size:18px;font-weight:650;margin-bottom:6px} .act p{margin:0;color:var(--muted);font-size:13.5px}
+.recent{margin-top:44px} .recent h3{font-size:12px;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;font-weight:500}
+.rrow{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--glass);cursor:pointer;transition:.15s}
+.rrow:hover{border-color:var(--line2);background:var(--glass2)} .rrow .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;padding:2px 9px;border-radius:99px;border:1px solid var(--line2);color:var(--muted);font-family:var(--mono);white-space:nowrap}
+.pill.ok{color:var(--green);border-color:rgba(61,255,176,.4)} .pill.no{color:var(--amber);border-color:rgba(255,193,90,.4)} .pill.cy{color:var(--cyan);border-color:rgba(56,225,255,.4)}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+
+/* ---------- explore ---------- */
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.search{position:relative;flex:1;min-width:220px;max-width:380px} .search input{padding-left:38px;background:var(--glass)}
+.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--muted)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.fc{background:var(--glass);border:1px solid var(--line);border-radius:99px;padding:6px 13px;font-size:12.5px;color:var(--muted);transition:.15s;display:flex;gap:6px;align-items:center}
+.fc:hover{color:var(--text);border-color:var(--line2)} .fc.on{color:var(--text);border-color:var(--cyan);background:rgba(56,225,255,.1)}
+.seg{display:flex;background:var(--glass);border:1px solid var(--line);border-radius:10px;padding:3px}
+.seg button{background:none;border:0;padding:6px 14px;border-radius:7px;color:var(--muted);font-size:13px;font-weight:500}
+.seg button.on{background:var(--glass2);color:var(--text)}
+.stage{position:relative;height:calc(100vh - 150px);min-height:520px;border:1px solid var(--line);border-radius:20px;overflow:hidden;
+  background:radial-gradient(700px 400px at 50% 45%,rgba(139,123,255,.09),transparent 70%),rgba(4,6,11,.6)}
+canvas{width:100%;height:100%;display:block;cursor:grab} canvas.grabbing{cursor:grabbing}
+.key{position:absolute;left:16px;bottom:14px;display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);font-family:var(--mono);background:rgba(5,7,13,.7);padding:8px 12px;border-radius:10px;border:1px solid var(--line);backdrop-filter:blur(6px)}
+.key i{display:inline-block;width:16px;height:2px;margin-right:6px;vertical-align:middle;border-radius:2px}
+.zoom{position:absolute;right:14px;bottom:14px;display:flex;flex-direction:column;gap:6px}
+.zoom button{width:34px;height:34px;border-radius:10px;background:rgba(5,7,13,.75);border:1px solid var(--line2);font-size:16px}
+.zoom button:hover{border-color:var(--cyan)}
+.tip{position:absolute;pointer-events:none;display:none;z-index:6;max-width:270px;background:rgba(8,12,22,.94);border:1px solid var(--line2);border-radius:12px;padding:10px 13px;font-size:12.5px;backdrop-filter:blur(8px)}
+.tip b{font-size:13.5px} .tip .muted{display:block;margin-top:2px}
+.loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-family:var(--mono);font-size:13px}
+.spin{width:22px;height:22px;border:2px solid var(--line2);border-top-color:var(--cyan);border-radius:50%;animation:sp 1s linear infinite;margin:0 auto 12px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+#list{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
+.rc{background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:16px 18px;cursor:pointer;transition:.18s;display:flex;flex-direction:column;gap:10px}
+.rc:hover{transform:translateY(-3px);border-color:var(--line2);background:var(--glass2)}
+.rc .n{display:flex;align-items:center;gap:9px;font-weight:650;font-size:15px} .rc .n small{color:var(--muted);font-weight:400}
+.rc .d{color:var(--muted);font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:40px}
+.rc .st{display:flex;gap:14px;color:var(--muted);font-size:12px;font-family:var(--mono);flex-wrap:wrap}
+.rc .tags{display:flex;gap:6px;flex-wrap:wrap}
+
+#drawer{position:fixed;top:72px;right:16px;bottom:16px;width:392px;max-width:calc(100vw - 32px);z-index:35;transform:translateX(115%);transition:transform .35s cubic-bezier(.2,.8,.2,1);
+  background:rgba(8,12,22,.9);backdrop-filter:blur(16px);border:1px solid var(--line2);border-radius:20px;overflow:auto;padding:22px;box-shadow:0 30px 80px -20px #000}
+#drawer.open{transform:none}
+.dh{display:flex;align-items:flex-start;gap:10px} .dh h3{font-size:19px;font-weight:700;word-break:break-word} .dh small{color:var(--muted);display:block}
+.x{margin-left:auto;background:none;border:0;color:var(--muted);font-size:18px;padding:0 4px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}
+.stat{background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:10px 12px} .stat b{display:block;font-size:17px;font-weight:700} .stat span{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.sec{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:20px 0 9px}
+.rel{display:flex;align-items:center;gap:10px;padding:8px 11px;border:1px solid var(--line);border-radius:11px;margin-bottom:6px;cursor:pointer;background:var(--glass);transition:.15s}
+.rel:hover{border-color:var(--line2);background:var(--glass2)} .rel b{font-weight:600;font-size:13.5px} .rel small{color:var(--muted);margin-left:auto;font-size:11.5px;text-align:right}
+pre.sum{white-space:pre-wrap;font:13px/1.6 var(--sans);background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:12px;padding:13px;margin:0}
+.crow{display:flex;gap:9px;font-size:12.5px;padding:3px 0;color:var(--muted)} .crow .mono{color:var(--cyan)}
+
+/* ---------- run view ---------- */
+.rail{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0 22px}
+.st2{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--glass);font-size:12.5px;color:var(--dim);transition:.3s}
+.st2.active{color:var(--text);border-color:var(--violet);box-shadow:0 0 0 3px rgba(139,123,255,.2);animation:pulse 1.4s infinite}
+.st2.done{color:var(--green);border-color:rgba(61,255,176,.4)} .st2.failed{color:var(--red);border-color:var(--red)} .st2.wait{color:var(--amber);border-color:var(--amber)}
+@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(139,123,255,.06)}}
+.feed{display:flex;flex-direction:column;gap:12px;max-width:860px}
+.ev{background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:14px 17px;animation:in .35s ease}
 @keyframes in{from{opacity:0;transform:translateY(8px)}}
-.ev .t{font-weight:650;display:flex;gap:8px;align-items:center} .ev .d{color:var(--muted);font-size:13px;white-space:pre-wrap;margin-top:4px}
-.ev.small{padding:8px 14px;background:transparent;border-style:dashed} .ev.small .t{font-weight:500;color:var(--muted);font-size:13px}
-.clause{border-left:3px solid var(--accent);background:var(--bg2);border-radius:8px;padding:9px 12px;margin-top:8px;font-size:13px}
-.clause q{display:block;font-style:italic;margin:3px 0} .clause .meta{color:var(--muted);font-size:12px}
-.lv{font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px;background:#7c6cff33;color:var(--accent);margin-right:6px}
-.lv.MUST,.lv.MUSTNOT{background:#ff4d6d22;color:var(--red)} .lv.SHOULD{background:#ffb45422;color:var(--amber)}
-.red{border-color:var(--red);background:linear-gradient(180deg,#ff4d6d14,var(--card));animation:in .35s ease,flash 1.1s ease 1}
-@keyframes flash{0%,60%{box-shadow:0 0 0 0 #ff4d6d66}30%{box-shadow:0 0 0 12px #ff4d6d00}}
-.violation{border:2px solid var(--red);background:linear-gradient(180deg,#ff4d6d22,#ff4d6d08);border-radius:16px;padding:18px;animation:in .4s ease,shake .5s ease 1}
+.ev .t{font-weight:600;display:flex;gap:8px;align-items:center} .ev .d{color:var(--muted);font-size:13px;white-space:pre-wrap;margin-top:4px}
+.ev.small{padding:6px 14px;background:transparent;border-style:dashed;border-color:var(--line)} .ev.small .t{font-weight:400;color:var(--muted);font-size:13px}
+.clause{border-left:2px solid var(--violet);background:rgba(0,0,0,.25);border-radius:9px;padding:10px 13px;margin-top:9px;font-size:13px}
+.clause q{display:block;font-style:italic;margin:4px 0} .clause .meta{color:var(--muted);font-size:12px}
+.lv{font-size:10px;font-weight:700;padding:1px 7px;border-radius:5px;background:rgba(139,123,255,.2);color:var(--violet);margin-right:7px;font-family:var(--mono)}
+.lv.MUST,.lv.MUSTNOT{background:rgba(255,77,115,.15);color:var(--red)} .lv.SHOULD{background:rgba(255,193,90,.15);color:var(--amber)}
+.red{border-color:rgba(255,77,115,.6);background:linear-gradient(180deg,rgba(255,77,115,.1),var(--glass));animation:in .35s ease,flash 1.1s ease 1}
+@keyframes flash{0%,60%{box-shadow:0 0 0 0 rgba(255,77,115,.5)}30%{box-shadow:0 0 0 12px rgba(255,77,115,0)}}
+.violation{border:1.5px solid var(--red);background:linear-gradient(180deg,rgba(255,77,115,.18),rgba(255,77,115,.04));border-radius:16px;padding:18px 20px;animation:in .4s ease,shake .5s ease 1;box-shadow:0 0 50px -15px rgba(255,77,115,.6)}
 @keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
-.violation h4{margin:0 0 6px;color:var(--red);font-size:17px;letter-spacing:.3px}
-.violation q{display:block;font-size:15px;margin:6px 0 10px}
-code,.mono{font-family:var(--mono);font-size:12px} .out{background:#0006;border-radius:8px;padding:10px;color:#ffc2cd;overflow:auto;max-height:160px;white-space:pre-wrap;font-family:var(--mono);font-size:12px;margin:6px 0}
-.green{border-color:var(--green);background:linear-gradient(180deg,#2ee6a615,var(--card))}
-.flip{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-top:8px;font-size:12px}
-.flip .b{background:#ff4d6d18;border:1px solid #ff4d6d55;color:#ffb3c0;border-radius:8px;padding:7px 9px;font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.flip .a{background:#2ee6a618;border:1px solid #2ee6a655;color:var(--green);border-radius:8px;padding:7px 9px;font-family:var(--mono)}
-.gate{border:1px solid var(--amber);background:#ffb45410} .gate textarea{margin-top:10px}
-.diff{background:#0007;border-radius:8px;padding:10px;font-family:var(--mono);font-size:12px;overflow:auto;max-height:200px;white-space:pre}
-.diff .p{color:var(--green)} .diff .m{color:var(--red)}
-.big{font-size:22px;font-weight:800} .center{text-align:center}
-/* chat */
-#chatBtn{position:fixed;right:22px;bottom:22px;z-index:30;width:56px;height:56px;border-radius:50%;border:0;background:linear-gradient(135deg,var(--accent),var(--green));font-size:24px;box-shadow:0 12px 30px -8px #7c6cffaa}
-#chat{position:fixed;right:22px;bottom:90px;width:370px;max-width:calc(100vw - 44px);height:480px;z-index:30;display:none;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 20px 60px -20px #000}
-#chat.open{display:flex} #chat header{position:static;border-radius:18px 18px 0 0;padding:12px 16px;background:var(--bg2)}
+.violation h4{margin:0 0 8px;color:var(--red);font-size:14px;letter-spacing:.14em;font-family:var(--mono)} .violation q{display:block;font-size:15px;margin:8px 0 12px}
+.out{background:rgba(0,0,0,.5);border-radius:10px;padding:11px;color:#ffb8c6;overflow:auto;max-height:170px;white-space:pre-wrap;font-family:var(--mono);font-size:12px;margin:7px 0}
+.green{border-color:rgba(61,255,176,.45);background:linear-gradient(180deg,rgba(61,255,176,.09),var(--glass))}
+.flip{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-top:9px;font-size:12px}
+.flip .b{background:rgba(255,77,115,.1);border:1px solid rgba(255,77,115,.35);color:#ffb3c0;border-radius:9px;padding:7px 10px;font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.flip .a{background:rgba(61,255,176,.1);border:1px solid rgba(61,255,176,.4);color:var(--green);border-radius:9px;padding:7px 10px;font-family:var(--mono)}
+.gate{border-color:rgba(255,193,90,.5);background:rgba(255,193,90,.05)} .gate textarea{margin-top:11px}
+.diff{background:rgba(0,0,0,.5);border-radius:10px;padding:11px;font-family:var(--mono);font-size:12px;overflow:auto;max-height:210px;white-space:pre;margin-top:8px}
+.diff .p{color:var(--green)} .diff .m{color:var(--red)} .big{font-size:20px;font-weight:700}
+
+/* ---------- chat ---------- */
+#chatBtn{position:fixed;right:22px;bottom:22px;z-index:50;width:54px;height:54px;border-radius:50%;border:0;background:linear-gradient(135deg,#2bc4e8,#7a6bff);color:#fff;box-shadow:0 14px 34px -8px rgba(122,107,255,.9)}
+#chatBtn svg{width:24px;height:24px}
+#chat{position:fixed;right:22px;bottom:88px;width:376px;max-width:calc(100vw - 44px);height:480px;z-index:50;display:none;flex-direction:column;background:rgba(8,12,22,.94);backdrop-filter:blur(16px);border:1px solid var(--line2);border-radius:20px;box-shadow:0 30px 80px -20px #000}
+#chat.open{display:flex}
+#chat .ch{display:flex;align-items:center;gap:8px;padding:13px 16px;border-bottom:1px solid var(--line);font-weight:600}
 #msgs{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
-.m{max-width:88%;padding:9px 12px;border-radius:14px;font-size:14px;white-space:pre-wrap}
-.m.u{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
-.m.a{align-self:flex-start;background:var(--bg2);border-bottom-left-radius:4px}
+.m{max-width:88%;padding:9px 13px;border-radius:14px;font-size:13.5px;white-space:pre-wrap}
+.m.u{align-self:flex-end;background:linear-gradient(135deg,#2bc4e8,#7a6bff);color:#fff;border-bottom-right-radius:4px}
+.m.a{align-self:flex-start;background:var(--glass2);border-bottom-left-radius:4px}
 #chat form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}
-.hide{display:none!important} .muted{color:var(--muted)}
-.notice{background:#ffb45414;border:1px solid var(--amber);border-radius:12px;padding:12px 14px;color:var(--amber);font-size:14px;margin-top:16px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation-duration:.01ms!important}}
 </style>
 </head>
 <body>
 <header>
-  <div class="logo" onclick="go('home')">🛡️ <b>SpecGuard</b></div>
-  <span class="tag hide" id="tagline">Don't review AI code — review its proof.</span>
+  <div class="logo" onclick="go('home')">
+    <svg viewBox="0 0 32 32" fill="none"><path d="M16 2l11 4v9c0 7-4.6 12.2-11 15C9.6 27.200 5 22 5 15V6l11-4z" stroke="url(#g)" stroke-width="1.8"/><circle cx="16" cy="11" r="2.2" fill="#38e1ff"/><circle cx="11" cy="19" r="2" fill="#8b7bff"/><circle cx="21" cy="19" r="2" fill="#3dffb0"/><path d="M16 13l-4 5M16 13l4 5M13 19h6" stroke="#9fb0d4" stroke-width="1"/><defs><linearGradient id="g" x1="5" y1="2" x2="27" y2="30"><stop stop-color="#38e1ff"/><stop offset="1" stop-color="#8b7bff"/></linearGradient></defs></svg>
+    <b>SpecGuard</b>
+  </div>
+  <nav id="nav" class="hide"><button data-v="home" onclick="go('home')">Home</button><button data-v="explore" onclick="go('explore')">Explore</button><button data-v="read" onclick="go('read')">Read</button><button data-v="build" onclick="go('build')">Build</button></nav>
   <div class="sp"></div>
-  <div class="chip hide" id="userChip"><img id="avatar" alt=""><span id="uname"></span><button class="btn ghost" style="padding:3px 10px" onclick="logout()">Sign out</button></div>
+  <div class="chip hide" id="userChip"><img id="avatar" alt=""><span id="uname"></span><button onclick="logout()">Sign out</button></div>
 </header>
 <main id="app"></main>
+<aside id="drawer"></aside>
 
-<button id="chatBtn" class="hide" onclick="toggleChat()" aria-label="Chat">💬</button>
+<button id="chatBtn" class="hide" onclick="toggleChat()" aria-label="Chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></button>
 <div id="chat">
-  <header><b>Ask SpecGuard</b><span class="sp"></span><span class="muted" id="chatCtx" style="font-size:12px"></span><button class="btn ghost" style="padding:2px 9px" onclick="toggleChat()">✕</button></header>
+  <div class="ch">Ask SpecGuard<span class="sp"></span><span class="muted mono" id="chatCtx" style="font-size:11px"></span><button class="btn sm" onclick="toggleChat()">✕</button></div>
   <div id="msgs"></div>
-  <form onsubmit="sendChat(event)"><input id="chatIn" placeholder="Ask about a repo, a run, or how this works…" autocomplete="off"><button class="btn primary">Send</button></form>
+  <form onsubmit="sendChat(event)"><input id="chatIn" placeholder="Ask about a repo or how a run works…" autocomplete="off"><button class="btn primary sm">Send</button></form>
 </div>
 
 <script>
 const $=s=>document.querySelector(s), app=$('#app');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let ME=null, REPOS=[], SELECTED=null, ES=null, CHAT=[];
+let ME=null,G=null,SELECTED=null,ES=null,CHAT=[],GR=null,VIEW='graph',FILTER={q:'',chip:'all'};
 const api=async(u,o)=>{const r=await fetch(u,o&&o.body?{...o,headers:{'Content-Type':'application/json'}}:o);if(r.status===401)throw new Error('401');if(!r.ok)throw new Error((await r.json().catch(()=>({detail:r.statusText}))).detail||r.statusText);return r.json()};
 const post=(u,b)=>api(u,{method:'POST',body:JSON.stringify(b)});
+const LANG={Python:'#4f8cff',TypeScript:'#38bdf8',JavaScript:'#facc15',Go:'#22d3ee',Rust:'#fb923c',Java:'#f87171','C++':'#f472b6',C:'#94a3b8','C#':'#a78bfa',Ruby:'#fb7185',Shell:'#86efac',HTML:'#fb923c',CSS:'#a78bfa',Jupyter:'#fdba74','Jupyter Notebook':'#fdba74',Kotlin:'#c084fc',Swift:'#fb923c'};
+const langColor=l=>l?(LANG[l]||'#'+[...l].reduce((h,c)=>(h*31+c.charCodeAt(0))>>>0,7).toString(16).padStart(6,'0').slice(0,6)):'#5b6785';
+const CL=['#38e1ff','#8b7bff','#3dffb0','#ffc15a','#ff6fb1','#7dd3fc','#c4f542','#ff8a5b'];
+const EDGE={fork:['#38e1ff','fork'],same:['#3dffb0','same project'],name:['#8b7bff','similar name'],topic:['#ffc15a','shared topic'],ai:['#c8d3ff','AI-inferred']};
+const ago=iso=>{if(!iso)return'—';const d=(Date.now()-new Date(iso))/864e5;return d<1?'today':d<2?'yesterday':d<30?Math.round(d)+'d ago':d<365?Math.round(d/30)+'mo ago':(d/365).toFixed(1)+'y ago'};
+const kb=n=>n>=1024?(n/1024).toFixed(1)+' MB':n+' KB';
+const ICON={build:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4L12 3zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z"/></svg>',
+ read:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5v-13zM20 5.5c0-.8-.7-1.5-1.500-1.500H13v16h5.500c.8 0 1.500-.7 1.500-1.500v-13z"/></svg>',
+ map:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="6" cy="7" r="2.500"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="17" r="3"/><path d="M8 8l2.800 6.500M16.500 7.500L13.500 14.500M8.500 7h7.500"/></svg>'};
 
 async function init(){
   try{ME=await api('/api/me')}catch(e){ME=null}
-  document.querySelector('#userChip').classList.toggle('hide',!ME);
-  $('#tagline').classList.toggle('hide',!ME);$('#chatBtn').classList.toggle('hide',!ME);
-  if(ME){$('#avatar').src=ME.avatar;$('#uname').textContent=ME.login;go('home')}else login();
+  ['#userChip','#nav','#chatBtn'].forEach(s=>$(s).classList.toggle('hide',!ME));
+  if(ME){$('#avatar').src=ME.avatar;$('#uname').textContent=ME.login;go((location.hash||'#home').slice(1).split(':')[0])}else login();
 }
 async function login(){
   const c=await api('/auth/config');
-  app.innerHTML=`<div class="hero"><h1>Don't review AI code.<br><b style="background:linear-gradient(90deg,var(--accent),var(--green));-webkit-background-clip:text;color:transparent">Review its proof.</b></h1>
+  app.innerHTML=`<div class="hero"><div class="eyebrow">Proof-driven development</div>
+  <h1>Don't review AI code.<br><span class="grad">Review its proof.</span></h1>
   <p>SpecGuard turns a feature request into cited spec clauses, writes the tests first, implements until they pass, and reviews any PR by running tests — never by guessing.</p>
-  ${c.github?`<a class="btn primary" style="display:inline-block;text-decoration:none;font-size:16px;padding:13px 26px" href="/auth/github">Sign in with GitHub</a>`:
-   `<div class="notice">GitHub OAuth is not configured on this server yet (set GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET).</div>`}
-  ${c.local?`<p style="margin-top:18px"><a href="/auth/local" class="muted">Local dev sign-in (uses this machine's gh CLI)</a></p>`:''}</div>`;
+  ${c.github?`<a class="btn primary cta" href="/auth/github">Continue with GitHub</a>`:`<div class="notice" style="max-width:520px;margin:0 auto">GitHub OAuth isn't configured on this server yet. Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.</div>`}
+  ${c.local?`<p style="margin-top:20px;font-size:13px"><a href="/auth/local" class="muted">Local dev sign-in</a></p>`:''}</div>`;
 }
 async function logout(){await post('/auth/logout',{});location.reload()}
-
 function go(v,arg){
-  if(ES){ES.close();ES=null}
-  ({home:home,explore:explore,read:readView,build:buildView}[v]||home)(arg);
+  if(ES){ES.close();ES=null} if(GR){GR.stop();GR=null}
+  closeDrawer(); const f={home,explore,read:readView,build:buildView}[v]||home; v=f===home?'home':v;
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  app.classList.toggle('wide',v==='explore'); if(location.hash.slice(1).split(':')[0]!==v)history.replaceState(null,'','#'+v); f(arg);
 }
-function home(){
-  app.innerHTML=`<div class="hero"><h1>What are we building, ${esc(ME.name.split(' ')[0])}?</h1>
-  <p>Everything runs against the specs in your repos and shows its work as it goes.</p></div>
-  <div class="grid3">
-   <button class="action" onclick="go('build')"><div class="ic">✨</div><h3>Create a new feature</h3><p>Describe it. SpecGuard cites the clauses, writes failing tests, makes them pass, and opens a PR with the evidence.</p></button>
-   <button class="action" onclick="go('read')"><div class="ic">📖</div><h3>Read a repo</h3><p>Highlights, health, open PRs — and review any PR with proof-based checks.</p></button>
-   <button class="action" onclick="go('explore')"><div class="ic">🌌</div><h3>Explore my repos</h3><p>Every repo you can access as a living constellation. Size is activity, glow is write access.</p></button>
-  </div><div id="recent" style="margin-top:30px"></div>`;
-  api('/api/runs').then(rs=>{if(!rs.length)return;$('#recent').innerHTML=`<h2 style="font-size:18px">Recent runs</h2><div class="prs">`+rs.slice(0,6).map(r=>`<div><span>${r.kind==='build'?'✨':'🔎'} ${esc(r.feature)} <span class="muted">· ${esc(r.repo)}</span></span><span class="row"><span class="pill ${r.status==='done'?'ok':''}">${esc(r.status)}</span><button class="btn" style="padding:4px 10px" onclick='openRun(${JSON.stringify(r.run_id)},${JSON.stringify(r.kind)})'>Open</button></span></div>`).join('')+`</div>`}).catch(()=>{});
-}
-async function loadRepos(){if(!REPOS.length)REPOS=await api('/api/repos');return REPOS}
 function setCtx(r){SELECTED=r;$('#chatCtx').textContent=r||''}
 
-/* ---------- explore: constellation graph ---------- */
-const PALETTE=['#7c6cff','#2ee6a6','#4db8ff','#ffb454','#ff6fb5','#a3e635','#f97316','#22d3ee','#c084fc'];
-function colorFor(lang,map){if(!lang)return '#6b7690';if(!map[lang])map[lang]=PALETTE[Object.keys(map).length%PALETTE.length];return map[lang]}
+/* ---------- home ---------- */
+function home(){
+  app.innerHTML=`<div class="hero" style="padding-top:36px"><div class="eyebrow">Welcome back, ${esc(ME.name.split(' ')[0])}</div><h1 style="font-size:clamp(30px,4.5vw,46px)">What are we <span class="grad">proving</span> today?</h1></div>
+  <div class="cards3">
+   <button class="act" style="--c:var(--cyan);--tint:rgba(56,225,255,.14)" onclick="go('build')">${ICON.build}<h3>Create a new feature</h3><p>Cited clauses, tests first, red to green, then a PR with the evidence.</p></button>
+   <button class="act" style="--c:var(--green);--tint:rgba(61,255,176,.12)" onclick="go('read')">${ICON.read}<h3>Read a repo</h3><p>Highlights, health and proof-based review of any open PR.</p></button>
+   <button class="act" style="--c:var(--violet);--tint:rgba(139,123,255,.16)" onclick="go('explore')">${ICON.map}<h3>Explore my repos</h3><p>Your repositories as a living map, connected by what they share.</p></button>
+  </div><div class="recent" id="recent"></div>`;
+  api('/api/runs').then(rs=>{if(!rs.length)return;$('#recent').innerHTML=`<h3>Recent runs</h3>`+rs.slice(0,5).map(r=>`<div class="rrow" onclick='openRun(${JSON.stringify(r.run_id)})'><span>${r.kind==='build'?'✦':'◎'}</span><span class="t">${esc(r.feature)} <span class="muted">· ${esc(r.repo)}</span></span><span class="pill ${r.status==='done'?'ok':r.status==='failed'?'no':'cy'}">${esc(r.status)}</span></div>`).join('')}).catch(()=>{});
+}
+async function loadGraph(refresh){if(!G||refresh)G=await api('/api/graph'+(refresh?'?refresh=1':''));return G}
+
+/* ---------- explore ---------- */
+const matches=r=>{const q=FILTER.q.toLowerCase();if(q&&!(r.full_name+' '+(r.description||'')+' '+(r.language||'')+' '+clusterOf(r).name).toLowerCase().includes(q))return false;
+  const c=FILTER.chip;return c==='all'||(c==='write'&&r.write)||(c==='private'&&r.private)||(c==='recent'&&(Date.now()-new Date(r.pushed_at))/864e5<30)||(c==='fork'&&r.fork)||(c.startsWith('lang:')&&r.language===c.slice(5))};
+const clusterOf=r=>G.clusters.find(c=>c.id===G.assign[r.full_name])||{name:'Other',blurb:''};
 async function explore(){
-  app.innerHTML=`<h2>Your repo constellation</h2><p class="sub">Node size = stars, size and open issues · colour = language · green ring = you can write · dashed = private · brighter = pushed recently.</p>
-  <div class="explore"><div id="graphWrap"><canvas id="cv"></canvas><div class="tip" id="tip"></div><div class="legend" id="legend"></div><div class="hint">drag a node · click to inspect</div></div>
-  <div class="panel sidebar" id="side"><p class="muted">Loading repos…</p></div></div>`;
-  try{await loadRepos()}catch(e){app.innerHTML=`<div class="notice">Could not load repos: ${esc(e.message)}</div>`;return}
-  drawGraph(REPOS);
-  $('#side').innerHTML=`<h3>${REPOS.length} repositories</h3><p class="muted">Click a node to read it, build a feature on it, or review its PRs.</p>`;
+  const sub=location.hash.split(':');if(sub[1]==='list')VIEW='list';
+  app.innerHTML=`<div class="bar">
+    <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.500-3.500"/></svg><input id="q" placeholder="Search repos, languages, themes…" value="${esc(FILTER.q)}"></div>
+    <div class="chips" id="chips"></div><div class="sp"></div>
+    <div class="seg"><button data-v="graph" class="${VIEW==='graph'?'on':''}">Graph</button><button data-v="list" class="${VIEW==='list'?'on':''}">List</button></div>
+    <button class="btn sm" id="refresh" title="Recompute relationships">↻</button></div>
+  <div class="stage ${VIEW==='graph'?'':'hide'}" id="stage"><canvas id="cv"></canvas><div class="tip" id="tip"></div><div class="loading" id="load"><div><div class="spin"></div>Mapping your repositories…</div></div>
+   <div class="key" id="key"></div><div class="zoom"><button onclick="GR&&GR.zoomBy(1.25)">+</button><button onclick="GR&&GR.zoomBy(.8)">−</button><button onclick="GR&&GR.fit()" title="Fit">⤢</button></div></div>
+  <div id="list" class="${VIEW==='list'?'':'hide'}"></div>`;
+  $('#q').oninput=e=>{FILTER.q=e.target.value;applyFilter()};
+  document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{VIEW=b.dataset.v;document.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on',x===b));$('#stage').classList.toggle('hide',VIEW!=='graph');$('#list').classList.toggle('hide',VIEW!=='list');if(VIEW==='graph'&&GR)GR.resize()});
+  $('#refresh').onclick=async()=>{G=null;go('explore')};
+  try{await loadGraph()}catch(e){$('#load').innerHTML=`<div class="notice">Could not load repos: ${esc(e.message)}</div>`;return}
+  renderChips();renderList();
+  $('#key').innerHTML=Object.entries(EDGE).map(([k,[c,l]])=>`<span><i style="background:${c}"></i>${l}</span>`).join('')+'<span style="color:#ffc15a">◌ read-only</span><span>◌ private</span>';
+  $('#load').classList.add('hide');GR=makeGraph($('#cv'),G);applyFilter();if(sub[1]==='pick')setTimeout(()=>pick(sub.slice(2).join(':')),400);
 }
-function drawGraph(repos){
-  const cv=$('#cv'),wrap=$('#graphWrap'),ctx=cv.getContext('2d'),dpr=devicePixelRatio||1,langMap={};
-  function size(){cv.width=wrap.clientWidth*dpr;cv.height=wrap.clientHeight*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}size();
-  const W=()=>wrap.clientWidth,H=()=>wrap.clientHeight,now=Date.now();
-  const nodes=repos.map((r,i)=>{const age=(now-new Date(r.pushed_at||0))/864e5;
-    const rad=Math.min(34,12+Math.sqrt(r.stars*4+r.size/1500+r.issues*3+1)*2.2);
-    return{r,x:W()/2+Math.cos(i)*160+Math.random()*30,y:H()/2+Math.sin(i)*120+Math.random()*30,vx:0,vy:0,rad,c:colorFor(r.language,langMap),
-      alpha:Math.max(.45,1-age/400)}});
-  const links=[];for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){const a=nodes[i].r,b=nodes[j].r;
-    if(a.language&&a.language===b.language)links.push([i,j,.5]);else if(a.owner===b.owner&&nodes.length<25)links.push([i,j,.25])}
-  let drag=null,hover=null,frames=0;
-  function step(){
-    for(const n of nodes){n.vx+=(W()/2-n.x)*.0009;n.vy+=(H()/2-n.y)*.0012}
-    for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){const a=nodes[i],b=nodes[j];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;const m=a.rad+b.rad+16;
-      if(d<m*2.2){const f=(m*2.2-d)*.012;dx/=d;dy/=d;a.vx-=dx*f;a.vy-=dy*f;b.vx+=dx*f;b.vy+=dy*f}}
-    for(const [i,j,k] of links){const a=nodes[i],b=nodes[j];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;const f=(d-150)*.0016*k;a.vx+=dx/d*f;a.vy+=dy/d*f;b.vx-=dx/d*f;b.vy-=dy/d*f}
-    for(const n of nodes){if(n===drag)continue;n.vx*=.86;n.vy*=.86;n.x+=n.vx;n.y+=n.vy;n.x=Math.max(n.rad,Math.min(W()-n.rad,n.x));n.y=Math.max(n.rad,Math.min(H()-n.rad,n.y))}
-  }
-  function paint(t){
-    ctx.clearRect(0,0,W(),H());
-    ctx.lineWidth=1;for(const [i,j,k] of links){ctx.strokeStyle=`rgba(124,108,255,${.07+k*.1})`;ctx.beginPath();ctx.moveTo(nodes[i].x,nodes[i].y);ctx.lineTo(nodes[j].x,nodes[j].y);ctx.stroke()}
-    for(const n of nodes){const sel=SELECTED===n.r.full_name,hov=hover===n;
-      const g=ctx.createRadialGradient(n.x,n.y,n.rad*.2,n.x,n.y,n.rad*(hov||sel?2.6:2));g.addColorStop(0,n.c+'55');g.addColorStop(1,n.c+'00');
-      ctx.fillStyle=g;ctx.beginPath();ctx.arc(n.x,n.y,n.rad*(hov||sel?2.6:2),0,7);ctx.fill();
-      ctx.globalAlpha=n.alpha;ctx.fillStyle=n.c;ctx.beginPath();ctx.arc(n.x,n.y,n.rad,0,7);ctx.fill();ctx.globalAlpha=1;
-      if(n.r.write){const pulse=1+Math.sin(t/500+n.x)*.08;ctx.strokeStyle='#2ee6a6';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(n.x,n.y,(n.rad+5)*pulse,0,7);ctx.stroke()}
-      if(n.r.private){ctx.setLineDash([4,4]);ctx.strokeStyle='#e8edf7';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(n.x,n.y,n.rad+10,0,7);ctx.stroke();ctx.setLineDash([])}
-      if(sel){ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(n.x,n.y,n.rad+3,0,7);ctx.stroke()}
-      ctx.fillStyle=getComputedStyle(document.body).color;ctx.font='600 11.5px system-ui';ctx.textAlign='center';ctx.fillText(n.r.name.length>18?n.r.name.slice(0,17)+'…':n.r.name,n.x,n.y+n.rad+20)}
-  }
-  let raf;function loop(t){if(!document.body.contains(cv))return;if(frames++<400||drag)step();paint(t);raf=requestAnimationFrame(loop)}loop(0);
-  const at=(e)=>{const b=cv.getBoundingClientRect(),x=e.clientX-b.left,y=e.clientY-b.top;return[x,y,nodes.slice().reverse().find(n=>Math.hypot(n.x-x,n.y-y)<=n.rad+6)]};
-  cv.onmousemove=e=>{const [x,y,n]=at(e);hover=n||null;cv.style.cursor=n?'pointer':'default';const tip=$('#tip');
-    if(drag){drag.x=x;drag.y=y;frames=0}
-    if(n){tip.style.display='block';tip.style.left=Math.min(x+14,W()-270)+'px';tip.style.top=y+14+'px';
-      tip.innerHTML=`<b>${esc(n.r.full_name)}</b><br><span class="muted">${esc(n.r.description||'no description')}</span><br>${esc(n.r.language||'—')} · ★ ${n.r.stars} · ${n.r.issues} open issues${n.r.write?' · ✍️ write':''}`}else tip.style.display='none'};
-  cv.onmousedown=e=>{const [,,n]=at(e);drag=n||null;cv._moved=false};
-  cv.onmouseup=e=>{const n=drag;drag=null;if(n&&!cv._moved)selectRepo(n.r)};
-  cv.addEventListener('mousemove',()=>cv._moved=true);
-  $('#legend').innerHTML=Object.entries(langMap).map(([l,c])=>`<span><i style="background:${c}"></i>${esc(l)}</span>`).join('');
-  addEventListener('resize',size);
+function renderChips(){
+  const langs=[...new Set(G.repos.map(r=>r.language).filter(Boolean))].slice(0,5);
+  const items=[['all','All'],['write','Writable'],['recent','Active 30d'],['private','Private'],...langs.map(l=>['lang:'+l,l])];
+  $('#chips').innerHTML=items.map(([k,l])=>`<button class="fc ${FILTER.chip===k?'on':''}" data-k="${esc(k)}">${k.startsWith('lang:')?`<i class="dot" style="background:${langColor(l)}"></i>`:''}${esc(l)}</button>`).join('');
+  document.querySelectorAll('.fc').forEach(b=>b.onclick=()=>{FILTER.chip=b.dataset.k;document.querySelectorAll('.fc').forEach(x=>x.classList.toggle('on',x===b));applyFilter()});
 }
-async function selectRepo(r){
-  setCtx(r.full_name);const s=$('#side');
-  s.innerHTML=`<h3>${esc(r.full_name)}</h3><div class="stat"><span>★ ${r.stars}</span><span>${esc(r.language||'—')}</span><span>${r.private?'🔒 private':'public'}</span></div><p class="muted">Reading repo…</p>`;
-  try{await renderRepo(s,r.full_name)}catch(e){s.innerHTML+=`<div class="notice">${esc(e.message)}</div>`}
+function applyFilter(){if(GR)GR.setFilter(matches);renderList()}
+function repoCard(r){const rel=G.edges.filter(e=>e.a===r.full_name||e.b===r.full_name).length,cl=clusterOf(r);
+  return `<div class="rc" onclick='pick(${JSON.stringify(r.full_name)})'><div class="n"><i class="dot" style="background:${langColor(r.language)}"></i>${esc(r.name)}<small>${esc(r.owner)}</small></div>
+  <div class="d">${esc(r.description||'No description')}</div>
+  <div class="tags">${r.write?'<span class="pill ok">write</span>':'<span class="pill">read</span>'}${r.private?'<span class="pill no">private</span>':''}${r.fork?'<span class="pill cy">fork</span>':''}${r.archived?'<span class="pill">archived</span>':''}<span class="pill">${esc(cl.name)}</span></div>
+  <div class="st"><span>★ ${r.stars}</span><span>⑂ ${r.forks}</span><span>◎ ${r.issues}</span><span>${esc(r.language||'—')}</span><span>${ago(r.pushed_at)}</span>${rel?`<span style="color:var(--cyan)">⇄ ${rel} related</span>`:''}</div></div>`}
+function renderList(){if(!G)return;const el=$('#list');if(!el)return;const rs=G.repos.filter(matches);el.innerHTML=rs.map(repoCard).join('')||'<div class="muted" style="padding:30px">No repositories match.</div>'}
+function pick(full){const r=G.repos.find(x=>x.full_name===full);if(!r)return;setCtx(full);if(GR)GR.select(full,true);openDrawer(r)}
+
+function openDrawer(r){
+  const cl=clusterOf(r),rel=G.edges.filter(e=>e.a===r.full_name||e.b===r.full_name).map(e=>({o:G.repos.find(x=>x.full_name===(e.a===r.full_name?e.b:e.a)),e})).filter(x=>x.o);
+  $('#drawer').innerHTML=`<div class="dh"><div><h3>${esc(r.name)}</h3><small>${esc(r.owner)}${r.fork&&r.parent?' · fork of '+esc(r.parent):''}</small></div><button class="x" onclick="closeDrawer()">✕</button></div>
+  <p class="muted" style="margin:10px 0">${esc(r.description||'No description')}</p>
+  <div class="row"><span class="pill"><i class="dot" style="background:${langColor(r.language)}"></i>${esc(r.language||'—')}</span><span class="pill ${r.write?'ok':'no'}">${r.write?'write access':'read only'}</span><span class="pill">${r.private?'private':'public'}</span>${r.archived?'<span class="pill no">archived</span>':''}</div>
+  <div class="stats"><div class="stat"><b>${r.stars}</b><span>stars</span></div><div class="stat"><b>${r.forks}</b><span>forks</span></div><div class="stat"><b>${r.issues}</b><span>open issues</span></div>
+   <div class="stat"><b>${kb(r.size)}</b><span>size</span></div><div class="stat"><b>${ago(r.pushed_at)}</b><span>last push</span></div><div class="stat"><b>${(r.created_at||'').slice(0,7)||'—'}</b><span>created</span></div></div>
+  <div class="sec">Theme</div><div class="rel" style="cursor:default"><i class="dot" style="background:${CL[G.clusters.indexOf(cl)%CL.length]}"></i><b>${esc(cl.name)}</b><small>${esc(cl.blurb||'')}</small></div>
+  <div class="sec">Related (${rel.length})</div>${rel.map(({o,e})=>`<div class="rel" onclick='pick(${JSON.stringify(o.full_name)})'><i class="dot" style="background:${EDGE[e.type][0]}"></i><b>${esc(o.name)}</b><small>${esc(e.why)}</small></div>`).join('')||'<div class="muted" style="font-size:13px">No relationships detected.</div>'}
+  <div class="row" style="margin-top:20px"><button class="btn primary" onclick='readInto(${JSON.stringify(r.full_name)})'>Read this repo</button><button class="btn" onclick='go("build",${JSON.stringify(r.full_name)})' ${r.write?'':'disabled title="needs write access"'}>Build a feature</button></div>
+  <div id="detail" style="margin-top:18px"></div>`;
+  $('#drawer').classList.add('open');
 }
-async function renderRepo(el,full){
-  const h=await api('/api/repo/'+full);
-  el.innerHTML=`<h3>${esc(full)}</h3>
-  <div class="row" style="margin:6px 0 10px"><span class="pill ${h.access.write?'ok':'no'}">${h.access.write?'write access':'read only'}</span>
-   <span class="pill ${h.has_specs?'ok':'no'}">${h.has_specs?'specs/ found':'no specs/ folder'}</span><span class="pill ${h.has_tests?'ok':'no'}">${h.has_tests?'tests found':'no tests'}</span></div>
+function closeDrawer(){$('#drawer').classList.remove('open');if(GR)GR.select(null)}
+async function readInto(full,elSel='#detail'){
+  const el=$(elSel);el.innerHTML='<div class="muted mono" style="font-size:12px">Reading repo…</div>';
+  try{const h=await api('/api/repo/'+full);
+  el.innerHTML=`<div class="row" style="margin-bottom:10px"><span class="pill ${h.has_specs?'ok':'no'}">${h.has_specs?'specs/ found':'no specs/'}</span><span class="pill ${h.has_tests?'ok':'no'}">${h.has_tests?'tests found':'no tests'}</span></div>
   <pre class="sum">${esc(h.summary)}</pre>
-  <div class="muted" style="font-size:12px">Languages: ${Object.keys(h.languages).map(esc).join(', ')||'—'}</div>
-  <h3 style="margin-top:14px;font-size:15px">Recent commits</h3><div class="prs">${h.commits.slice(0,4).map(c=>`<div><span class="mono">${esc(c.sha)}</span><span style="flex:1;margin-left:8px">${esc(c.msg)}</span></div>`).join('')}</div>
-  <h3 style="margin-top:14px;font-size:15px">Open PRs (${h.prs.length})</h3><div class="prs">${h.prs.map(p=>`<div><span>#${p.number} ${esc(p.title)}</span><button class="btn" style="padding:4px 10px" onclick='startReview(${JSON.stringify(full)},${p.number})' ${h.has_specs?'':'disabled title="needs specs/"'}>Review</button></div>`).join('')||'<span class="muted">none</span>'}</div>
-  <div class="row" style="margin-top:14px"><button class="btn primary" onclick='go("build",${JSON.stringify(full)})' ${h.access.write&&h.has_specs?'':'disabled'}>✨ Build a feature</button></div>
-  ${h.access.write&&h.has_specs?'':'<p class="muted" style="font-size:12px">Build needs write access and a specs/ folder.</p>'}`;
+  <div class="sec">Recent commits</div>${h.commits.slice(0,4).map(c=>`<div class="crow"><span class="mono">${esc(c.sha)}</span><span>${esc(c.msg)}</span></div>`).join('')}
+  <div class="sec">Open PRs (${h.prs.length})</div>${h.prs.map(p=>`<div class="rel" style="cursor:default"><b>#${p.number}</b><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.title)}</span><button class="btn sm" style="margin-left:auto" onclick='startReview(${JSON.stringify(full)},${p.number})' ${h.has_specs?'':'disabled'}>Review</button></div>`).join('')||'<div class="muted" style="font-size:13px">none</div>'}`}
+  catch(e){el.innerHTML=`<div class="notice">${esc(e.message)}</div>`}
 }
-async function readView(){
-  app.innerHTML=`<h2>Read a repo</h2><p class="sub">Pick one of your repos, or type owner/name.</p><div class="panel" style="max-width:640px"><label>Repository</label><input id="rin" list="rl" placeholder="owner/name"><datalist id="rl"></datalist><div class="row" style="margin-top:14px"><button class="btn primary" onclick="doRead()">Read it</button></div></div><div class="panel hide" id="rout" style="margin-top:18px;max-width:640px"></div>`;
-  loadRepos().then(rs=>$('#rl').innerHTML=rs.map(r=>`<option value="${esc(r.full_name)}">`).join('')).catch(()=>{});
+
+/* ---------- the graph engine ---------- */
+function makeGraph(cv,G){
+  const ctx=cv.getContext('2d'),dpr=Math.min(devicePixelRatio||1,2);let W=0,H=0,alive=true,frames=0,alpha=1,sel=null,hover=null,drag=null,pan=null,filt=()=>true,cam={x:0,y:0,k:1};
+  const idx={},nodes=G.repos.map((r,i)=>{const age=(Date.now()-new Date(r.pushed_at||0))/864e5;
+    const n={r,i,x:0,y:0,vx:0,vy:0,rad:Math.min(30,9+Math.sqrt(r.stars*5+r.size/1800+r.issues*2.5+1)*2.1),c:langColor(r.language),
+      cl:Math.max(0,G.clusters.findIndex(c=>c.id===G.assign[r.full_name])),fresh:age<14,dim:1};idx[r.full_name]=n;return n});
+  const edges=G.edges.map(e=>({...e,a:idx[e.a],b:idx[e.b]})).filter(e=>e.a&&e.b);
+  const nbr=n=>edges.filter(e=>e.a===n||e.b===n),geom=[];
+  const centers=[];
+  function size(){const b=cv.parentElement.getBoundingClientRect();W=b.width;H=b.height;cv.width=W*dpr;cv.height=H*dpr;layoutCenters()}
+  function layoutCenters(){const n=G.clusters.length,R=Math.min(W,H)*(n>1?.40:0);centers.length=0;
+    for(let i=0;i<n;i++){const a=i/n*Math.PI*2-Math.PI/2;centers.push({x:W/2+Math.cos(a)*R*1.7,y:H/2+Math.sin(a)*R})}
+    nodes.forEach((nd,j)=>{if(!nd.x){const c=centers[nd.cl]||{x:W/2,y:H/2};nd.x=c.x+(Math.random()-.5)*120;nd.y=c.y+(Math.random()-.5)*120}})}
+  size();
+  const LEN={fork:60,same:70,name:105,topic:135,ai:150};
+  function tick(){
+    for(const n of nodes){const c=centers[n.cl]||{x:W/2,y:H/2};n.vx+=(c.x-n.x)*.0105*(.3+alpha);n.vy+=(c.y-n.y)*.0105*(.3+alpha)}
+    for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){const a=nodes[i],b=nodes[j];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;
+      const m=a.rad+b.rad+(a.cl===b.cl?26:120);if(d<m*2){const f=(m*2-d)*.016*alpha+(d<m?(m-d)*.05:0);dx/=d;dy/=d;a.vx-=dx*f;a.vy-=dy*f;b.vx+=dx*f;b.vy+=dy*f}}
+    for(const e of edges){let dx=e.b.x-e.a.x,dy=e.b.y-e.a.y,d=Math.hypot(dx,dy)||1;const f=(d-(LEN[e.type]||120))*.012*e.w;dx/=d;dy/=d;e.a.vx+=dx*f;e.a.vy+=dy*f;e.b.vx-=dx*f;e.b.vy-=dy*f}
+    for(const n of nodes){if(n===drag)continue;n.vx*=.82;n.vy*=.82;n.x+=n.vx;n.y+=n.vy}
+    alpha=Math.max(.04,alpha*.992)}
+  const toWorld=(sx,sy)=>[(sx-cam.x)/cam.k,(sy-cam.y)/cam.k];
+  function bounds(){let a=1e9,b=1e9,c=-1e9,d=-1e9;geom.forEach(g=>{if(!g)return;a=Math.min(a,g.cx-g.r-10);b=Math.min(b,g.cy-g.r-34);c=Math.max(c,g.cx+g.r+10);d=Math.max(d,g.cy+g.r+10)});if(geom.length)return[a,b,c,d];nodes.forEach(n=>{a=Math.min(a,n.x-n.rad-110);b=Math.min(b,n.y-n.rad-130);c=Math.max(c,n.x+n.rad+110);d=Math.max(d,n.y+n.rad+110)});return[a,b,c,d]}
+  let auto=true;const target=()=>{const [a,b,c,d]=bounds(),k=Math.min(W/(c-a),H/(d-b),1.6);return{k,x:(W-(c-a)*k)/2-a*k,y:(H-(d-b)*k)/2-b*k}};
+  function fit(){auto=true}
+  const focusNode=()=>hover||sel;
+  function paint(t){
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+    ctx.setTransform(dpr*cam.k,0,0,dpr*cam.k,dpr*cam.x,dpr*cam.y);
+    const f=focusNode(),near=new Set();if(f){near.add(f);nbr(f).forEach(e=>{near.add(e.a);near.add(e.b)})}
+    // cluster halos
+    G.clusters.forEach((cl,ci)=>{const ms=nodes.filter(n=>n.cl===ci);if(!ms.length)return;
+      const cx=ms.reduce((s,n)=>s+n.x,0)/ms.length,cy=ms.reduce((s,n)=>s+n.y,0)/ms.length,r=Math.max(...ms.map(n=>Math.hypot(n.x-cx,n.y-cy)+n.rad))+44,col=CL[ci%CL.length];geom[ci]={cx,cy,r};
+      const g=ctx.createRadialGradient(cx,cy,r*.2,cx,cy,r);g.addColorStop(0,col+'14');g.addColorStop(1,col+'00');ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,r,0,7);ctx.fill();
+      ctx.setLineDash([3,7]);ctx.strokeStyle=col+'3a';ctx.lineWidth=1/cam.k;ctx.beginPath();ctx.arc(cx,cy,r-6,0,7);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle=col;ctx.globalAlpha=.85;ctx.font=`600 ${11/Math.max(cam.k,.6)}px JetBrains Mono,monospace`;ctx.textAlign='center';
+      ctx.fillText(cl.name.toUpperCase()+'  ·  '+ms.length,cx,cy-r-6/cam.k);ctx.globalAlpha=1});
+    // edges
+    edges.forEach(e=>{const inc=f&&(e.a===f||e.b===f),dimmed=f&&!inc,col=EDGE[e.type][0],vis=Math.min(e.a.dim,e.b.dim);
+      const mx=(e.a.x+e.b.x)/2,my=(e.a.y+e.b.y)/2,dx=e.b.x-e.a.x,dy=e.b.y-e.a.y,len=Math.hypot(dx,dy)||1,ox=-dy/len*len*.12,oy=dx/len*len*.12;
+      ctx.globalAlpha=(dimmed?.04:inc?.95:.3)*(.3+vis*.7);ctx.strokeStyle=col;ctx.lineWidth=(.8+e.w*1.3+(inc?1:0))/Math.sqrt(cam.k);
+      ctx.setLineDash(e.type==='ai'?[5,5]:[]);ctx.beginPath();ctx.moveTo(e.a.x,e.a.y);ctx.quadraticCurveTo(mx+ox,my+oy,e.b.x,e.b.y);ctx.stroke();ctx.setLineDash([]);
+      if(inc){const p=((t/1400)+e.a.i*.13)%1,q=1-p;ctx.fillStyle=col;ctx.beginPath();
+        ctx.arc(q*q*e.a.x+2*q*p*(mx+ox)+p*p*e.b.x,q*q*e.a.y+2*q*p*(my+oy)+p*p*e.b.y,3/Math.sqrt(cam.k),0,7);ctx.fill();
+        ctx.globalAlpha=1;ctx.fillStyle='#e8edf8';ctx.font=`500 ${10.5/Math.sqrt(cam.k)}px JetBrains Mono,monospace`;ctx.textAlign='center';ctx.fillText(e.why,mx+ox*.5,my+oy*.5-5/cam.k)}});
+    ctx.globalAlpha=1;
+    // nodes
+    nodes.forEach(n=>{const isSel=sel===n,isH=hover===n,rel=!f||near.has(n),a=(rel?1:.18)*(.25+n.dim*.75);
+      ctx.globalAlpha=a;const gr=ctx.createRadialGradient(n.x,n.y,n.rad*.3,n.x,n.y,n.rad*(isSel||isH?3:2.2));gr.addColorStop(0,n.c+'66');gr.addColorStop(1,n.c+'00');
+      ctx.fillStyle=gr;ctx.beginPath();ctx.arc(n.x,n.y,n.rad*(isSel||isH?3:2.2),0,7);ctx.fill();
+      if(n.fresh){const rp=((t/1800)+n.i*.2)%1;ctx.strokeStyle=n.c;ctx.globalAlpha=a*(1-rp)*.6;ctx.lineWidth=1.2/cam.k;ctx.beginPath();ctx.arc(n.x,n.y,n.rad+rp*20,0,7);ctx.stroke();ctx.globalAlpha=a}
+      const body=ctx.createRadialGradient(n.x-n.rad*.3,n.y-n.rad*.3,1,n.x,n.y,n.rad);body.addColorStop(0,'#fff');body.addColorStop(.25,n.c);body.addColorStop(1,n.c+'bb');
+      ctx.fillStyle=body;ctx.beginPath();ctx.arc(n.x,n.y,n.rad,0,7);ctx.fill();
+      if(!n.r.write){ctx.setLineDash([1,4]);ctx.strokeStyle='#ffc15a';ctx.lineWidth=1.6/cam.k;ctx.beginPath();ctx.arc(n.x,n.y,n.rad+5,0,7);ctx.stroke();ctx.setLineDash([])}
+      if(n.r.private){ctx.setLineDash([3,3]);ctx.strokeStyle='#e8edf8';ctx.lineWidth=1.2/cam.k;ctx.beginPath();ctx.arc(n.x,n.y,n.rad+8,0,7);ctx.stroke();ctx.setLineDash([])}
+      if(isSel){ctx.strokeStyle='#fff';ctx.lineWidth=2/cam.k;ctx.beginPath();ctx.arc(n.x,n.y,n.rad+3,0,7);ctx.stroke()}
+      if(isSel||isH||(f&&near.has(n))||n.rad*cam.k>15||cam.k>1.3){ctx.globalAlpha=Math.max(a,isSel||isH?1:0);ctx.fillStyle='#e8edf8';ctx.font=`600 ${12/Math.max(cam.k,.7)}px Inter,sans-serif`;ctx.textAlign='center';
+        ctx.fillText(n.r.name.length>20?n.r.name.slice(0,19)+'…':n.r.name,n.x,n.y+n.rad+16/Math.max(cam.k,.7))}
+      ctx.globalAlpha=1});
+  }
+  function loop(t){if(!alive)return;frames++;if(alpha>.045||drag)tick();if(auto&&frames>20){const t=target(),e=frames<60?1:.07;cam.k+=(t.k-cam.k)*e;cam.x+=(t.x-cam.x)*e;cam.y+=(t.y-cam.y)*e}
+    nodes.forEach(n=>{const tgt=filt(n.r)?1:0;n.dim+=(tgt-n.dim)*.12});paint(t);requestAnimationFrame(loop)}
+  requestAnimationFrame(loop);
+  const pos=e=>{const b=cv.getBoundingClientRect();return[e.clientX-b.left,e.clientY-b.top]};
+  const hit=(sx,sy)=>{const [x,y]=toWorld(sx,sy);return nodes.slice().reverse().find(n=>n.dim>.3&&Math.hypot(n.x-x,n.y-y)<=n.rad+7)};
+  let moved=false;
+  cv.onmousedown=e=>{const [sx,sy]=pos(e);const n=hit(sx,sy);moved=false;if(n){drag=n;alpha=Math.max(alpha,.35)}else{auto=false;pan={x:sx,y:sy,cx:cam.x,cy:cam.y};cv.classList.add('grabbing')}};
+  addEventListener('mouseup',e=>{if(!alive)return;const n=drag;drag=null;const wasPan=pan;pan=null;cv.classList.remove('grabbing');
+    if(n&&!moved){pick(n.r.full_name)}else if(wasPan&&!moved){sel=null;closeDrawer()}});
+  cv.onmousemove=e=>{const [sx,sy]=pos(e);moved=true;
+    if(drag){[drag.x,drag.y]=toWorld(sx,sy);drag.vx=drag.vy=0;return}
+    if(pan){cam.x=pan.cx+sx-pan.x;cam.y=pan.cy+sy-pan.y;return}
+    const n=hit(sx,sy);hover=n||null;cv.style.cursor=n?'pointer':'';const tip=$('#tip');
+    if(n){tip.style.display='block';tip.style.left=Math.min(sx+16,W-280)+'px';tip.style.top=Math.min(sy+16,H-110)+'px';
+      tip.innerHTML=`<b>${esc(n.r.name)}</b><span class="muted">${esc((n.r.description||'No description').slice(0,110))}</span><span class="muted mono" style="margin-top:6px">${esc(n.r.language||'—')} · ★ ${n.r.stars} · ${ago(n.r.pushed_at)}</span>`}else tip.style.display='none'};
+  cv.onmouseleave=()=>{hover=null;$('#tip').style.display='none'};
+  cv.onwheel=e=>{e.preventDefault();auto=false;const [sx,sy]=pos(e);const k=Math.max(.3,Math.min(3.5,cam.k*(e.deltaY<0?1.12:.9)));cam.x=sx-(sx-cam.x)*(k/cam.k);cam.y=sy-(sy-cam.y)*(k/cam.k);cam.k=k};
+  const onResize=()=>{if(alive){size()}};addEventListener('resize',onResize);
+  return{stop(){alive=false;removeEventListener('resize',onResize)},resize:size,fit,zoomBy(f){auto=false;const k=Math.max(.3,Math.min(3.5,cam.k*f));cam.x=W/2-(W/2-cam.x)*(k/cam.k);cam.y=H/2-(H/2-cam.y)*(k/cam.k);cam.k=k},
+    setFilter(fn){filt=fn},select(full,focus){sel=full?idx[full]:null;if(sel&&focus){alpha=Math.max(alpha,.1)}}};
 }
-async function doRead(){const v=$('#rin').value.trim();if(!v)return;setCtx(v);const o=$('#rout');o.classList.remove('hide');o.innerHTML='<p class="muted">Reading…</p>';try{await renderRepo(o,v.includes('/')?v:ME.login+'/'+v)}catch(e){o.innerHTML=`<div class="notice">${esc(e.message)}</div>`}}
+
+/* ---------- read a repo ---------- */
+function readView(){
+  app.innerHTML=`<h2>Read a repo</h2><p class="sub">Highlights, health, and one-click review of any open PR.</p><div class="panel" style="max-width:680px"><label>Repository</label><input id="rin" list="rl" placeholder="owner/name" value="${esc(SELECTED||'')}"><datalist id="rl"></datalist><div class="row" style="margin-top:16px"><button class="btn primary" onclick="doRead()">Read it</button></div></div><div class="panel hide" id="rout" style="margin-top:18px;max-width:680px"></div>`;
+  loadGraph().then(g=>$('#rl').innerHTML=g.repos.map(r=>`<option value="${esc(r.full_name)}">`).join('')).catch(()=>{});
+}
+async function doRead(){const v=$('#rin').value.trim();if(!v)return;const full=v.includes('/')?v:ME.login+'/'+v;setCtx(full);const o=$('#rout');o.classList.remove('hide');o.innerHTML='<div id="d2"></div>';readInto(full,'#d2')}
 
 /* ---------- build / review runs ---------- */
 function buildView(repo){
-  app.innerHTML=`<h2>Create a new feature</h2><p class="sub">SpecGuard builds it test-first against the specs in the repo, then opens a PR with the evidence.</p>
-  <div class="panel" style="max-width:720px"><label>Repository (needs write access and a specs/ folder)</label><input id="brepo" list="rl2" value="${esc(repo||SELECTED||'')}" placeholder="owner/name"><datalist id="rl2"></datalist>
+  app.innerHTML=`<h2>Create a new feature</h2><p class="sub">Built test-first against the specs in the repo, then opened as a PR with the evidence.</p>
+  <div class="panel" style="max-width:740px"><label>Repository · needs write access and a specs/ folder</label><input id="brepo" list="rl2" value="${esc(repo||SELECTED||'')}" placeholder="owner/name"><datalist id="rl2"></datalist>
   <label>What should it do?</label><textarea id="bfeat" placeholder="e.g. add audience (aud) claim validation to decode"></textarea>
-  <div class="row" style="margin-top:14px"><button class="btn primary" id="bgo" onclick="startBuild()">Start build</button></div><div id="berr"></div></div>`;
-  loadRepos().then(rs=>$('#rl2').innerHTML=rs.filter(r=>r.write).map(r=>`<option value="${esc(r.full_name)}">`).join('')).catch(()=>{});
+  <div class="row" style="margin-top:18px"><button class="btn primary" id="bgo" onclick="startBuild()">Start build</button></div><div id="berr"></div></div>`;
+  loadGraph().then(g=>$('#rl2').innerHTML=g.repos.filter(r=>r.write).map(r=>`<option value="${esc(r.full_name)}">`).join('')).catch(()=>{});
 }
 async function startBuild(){
   const repo=$('#brepo').value.trim(),feature=$('#bfeat').value.trim();if(!repo||!feature){$('#berr').innerHTML='<div class="notice">Pick a repo and describe the feature.</div>';return}
-  $('#bgo').disabled=true;try{const r=await post('/api/build',{repo,feature});openRun(r.run_id,'build')}catch(e){$('#berr').innerHTML=`<div class="notice">${esc(e.message)}</div>`;$('#bgo').disabled=false}
+  $('#bgo').disabled=true;try{const r=await post('/api/build',{repo,feature});openRun(r.run_id)}catch(e){$('#berr').innerHTML=`<div class="notice">${esc(e.message)}</div>`;$('#bgo').disabled=false}
 }
-async function startReview(repo,pr){try{const r=await post('/api/review',{repo,pr,comment:false});openRun(r.run_id,'review')}catch(e){alert(e.message)}}
+async function startReview(repo,pr){try{const r=await post('/api/review',{repo,pr,comment:false});closeDrawer();openRun(r.run_id)}catch(e){alert(e.message)}}
 
-const STAGES={build:[['ticket','🧾','Request'],['spec','📜','Spec'],['plan','🥣','Plan'],['tests_red','🔴','Tests red'],['implement','🔥','Implement'],['tests_green','🟢','Green'],['inspect','🕵️','Inspect'],['pr','🍽️','PR'],['human_review','💬','Review'],['merged','🔔','Merged']],
- review:[['received','📥','Received'],['map_clauses','🗺️','Map clauses'],['generate_tests','🧪','Generate'],['run_tests','▶️','Run'],['verdict','⚖️','Verdict'],['comment','💬','Comment']]};
-async function openRun(id,kind){
-  if(ES){ES.close()}
-  const info=await api('/api/runs/'+id);kind=info.run.kind;
-  app.innerHTML=`<h2>${kind==='build'?'✨ '+esc(info.run.feature):'🔎 Review '+esc(info.run.feature)}</h2><p class="sub">${esc(info.run.repo)} · run ${esc(id)}</p>
-  <div class="rail" id="rail">${STAGES[kind].map(([k,i,l])=>`<span class="st" data-s="${k}">${i} ${l}</span>`).join('')}</div><div class="feed" id="feed"></div>`;
-  const ctx={clauses:{},id};
-  ES=new EventSource('/api/runs/'+id+'/stream');
-  ES.onmessage=m=>render(JSON.parse(m.data),ctx);
-  ES.addEventListener('end',()=>{ES.close();ES=null});
+const STAGES={build:[['ticket','Request'],['spec','Spec'],['plan','Plan'],['tests_red','Tests red'],['implement','Implement'],['tests_green','Green'],['inspect','Inspect'],['pr','PR'],['human_review','Review'],['merged','Merged']],
+ review:[['received','Received'],['map_clauses','Map clauses'],['generate_tests','Generate'],['run_tests','Run'],['verdict','Verdict'],['comment','Comment']]};
+async function openRun(id){
+  if(ES){ES.close()} if(GR){GR.stop();GR=null} closeDrawer(); app.classList.remove('wide');
+  const info=await api('/api/runs/'+id),kind=info.run.kind;
+  app.innerHTML=`<h2>${kind==='build'?'✦ '+esc(info.run.feature):'◎ Review '+esc(info.run.feature)}</h2><p class="sub mono" style="font-size:12.5px">${esc(info.run.repo)} · run ${esc(id)}</p>
+  <div class="rail" id="rail">${STAGES[kind].map(([k,l])=>`<span class="st2" data-s="${k}">${l}</span>`).join('')}</div><div class="feed" id="feed"></div>`;
+  const ctx={clauses:{},id};ES=new EventSource('/api/runs/'+id+'/stream');
+  ES.onmessage=m=>render(JSON.parse(m.data),ctx);ES.addEventListener('end',()=>{ES.close();ES=null});
 }
 function rail(e){
-  const el=document.querySelector(`.st[data-s="${e.stage}"]`);if(!el)return;
-  const prev=[...document.querySelectorAll('.st')];const idx=prev.indexOf(el);prev.slice(0,idx).forEach(p=>{if(!p.classList.contains('failed'))p.className='st done'});
-  el.className='st '+({started:'active',progress:'active',done:'done',failed:'failed',waiting_human:'wait'}[e.status]||'active');
+  const el=document.querySelector(`.st2[data-s="${e.stage}"]`);if(!el)return;
+  const all=[...document.querySelectorAll('.st2')],idx=all.indexOf(el);all.slice(0,idx).forEach(p=>{if(!p.classList.contains('failed'))p.className='st2 done'});
+  el.className='st2 '+({started:'active',progress:'active',done:'done',failed:'failed',waiting_human:'wait'}[e.status]||'active');
 }
-function clauseHtml(c){return `<div class="clause"><span class="lv ${esc((c.level||'').replace(' ',''))}">${esc(c.level)}</span><b>${esc(c.id)}</b> <span class="meta">${esc(c.source)}</span><q>“${esc(c.quote)}”</q><span class="meta">${esc(c.requirement||'')}</span></div>`}
+const clauseHtml=c=>`<div class="clause"><span class="lv ${esc((c.level||'').replace(' ',''))}">${esc(c.level)}</span><b>${esc(c.id)}</b> <span class="meta">${esc(c.source)}</span><q>“${esc(c.quote)}”</q><span class="meta">${esc(c.requirement||'')}</span></div>`;
 function add(html,cls=''){const f=$('#feed');const d=document.createElement('div');d.className='ev '+cls;d.innerHTML=html;f.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'nearest'});return d}
 function render(e,ctx){
   rail(e);const d=e.data||{};
@@ -276,25 +421,25 @@ function render(e,ctx){
   if(d.clauses)d.clauses.forEach(c=>ctx.clauses[c.id]=c);
   if(e.stage==='spec'&&e.status==='waiting_human'){
     document.querySelectorAll('.gate[data-g=spec]').forEach(x=>x.remove());
-    const g=add(`<div class="t">📜 ${esc(e.title)}</div><div class="d">Every quote is verbatim from the repo's specs. Approve to write tests first.</div>${(d.clauses||[]).map(clauseHtml).join('')}
-      <textarea id="specEdit" placeholder="Want changes? e.g. also cover empty audience lists"></textarea>
-      <div class="row" style="margin-top:10px"><button class="btn good" onclick='gate(${JSON.stringify(ctx.id)},"spec","approve",this)'>Approve spec</button>
+    const g=add(`<div class="t">📜 ${esc(e.title)}</div><div class="d">Every quote is verbatim from the repo's specs. Approve to write the tests first.</div>${(d.clauses||[]).map(clauseHtml).join('')}
+      <textarea id="specEdit" placeholder="Want changes? e.g. also cover an empty audience list"></textarea>
+      <div class="row" style="margin-top:12px"><button class="btn good" onclick='gate(${JSON.stringify(ctx.id)},"spec","approve",this)'>Approve spec</button>
       <button class="btn" onclick='gate(${JSON.stringify(ctx.id)},"spec","edit",this,"specEdit")'>Edit clauses</button></div>`,'gate');g.dataset.g='spec';return}
   if(e.stage==='spec'&&e.status==='done'){document.querySelectorAll('.gate[data-g=spec]').forEach(x=>x.remove());return add(`<div class="t">📜 ${esc(e.title)}</div>${(d.clauses||[]).map(clauseHtml).join('')}`)}
   if(e.stage==='tests_red'&&e.status==='done'){
-    const tests=d.tests||[];add(`<div class="t big" style="color:var(--red)">🔴 ${esc(e.title)}</div><div class="d">${esc(e.detail)}</div>`,'red');
-    tests.forEach(t=>{const c=ctx.clauses[t.clause_id]||{};add(`<div class="t" style="color:var(--red)">✘ ${esc(t.clause_id)} <span class="muted mono">${esc((t.name||'').split('::').pop())}</span></div><q class="d" style="display:block">“${esc(c.quote||'')}”</q><div class="out">${esc(t.output_snippet)}</div>`,'red')});return}
+    add(`<div class="t big" style="color:var(--red)">🔴 ${esc(e.title)}</div><div class="d">${esc(e.detail)}</div>`,'red');
+    (d.tests||[]).forEach(t=>{const c=ctx.clauses[t.clause_id]||{};add(`<div class="t" style="color:var(--red)">✘ ${esc(t.clause_id)} <span class="muted mono">${esc((t.name||'').split('::').pop())}</span></div><q class="d" style="display:block">“${esc(c.quote||'')}”</q><div class="out">${esc(t.output_snippet)}</div>`,'red')});return}
   if(e.stage==='implement'&&d.diff_preview)return add(`<div class="t">🔥 ${esc(e.title)} <span class="muted mono">${esc(e.detail)}</span></div><div class="diff">${d.diff_preview.split('\n').map(l=>`<div class="${l.startsWith('+')&&!l.startsWith('+++')?'p':l.startsWith('-')&&!l.startsWith('---')?'m':''}">${esc(l)}</div>`).join('')}</div>`);
   if(e.stage==='tests_green'&&d.evidence){add(`<div class="t big" style="color:var(--green)">🟢 ${esc(e.title)}</div><div class="d">${esc(e.detail)}</div>`,'green');
     d.evidence.forEach(r=>add(`<div class="t" style="color:var(--green)">✔ ${esc(r.clause_id)} <span class="muted">${esc(r.source)}</span> <span class="muted mono">${esc(r.test)}</span></div><div class="flip"><div class="b">❌ ${esc(r.before)}</div><div>→</div><div class="a">✅ ${esc(r.after)}</div></div>`,'green'));return}
   if(d.violations&&d.violations.length){
-    d.violations.forEach(v=>add(`<h4>🚨 VIOLATION PROVEN BY A FAILING TEST</h4><div><span class="lv MUST">${esc('SPEC')}</span><b>${esc(v.clause_id)}</b> <span class="meta muted">${esc(v.source)}</span></div><q>“${esc(v.quote)}”</q>
-      <div class="muted" style="font-size:12px">Failing test <span class="mono">${esc(v.test_name)}</span></div><div class="out">${esc(v.output_snippet)}</div>${v.suggested_fix?`<div class="d"><b>Suggested fix:</b> ${esc(v.suggested_fix)}</div>`:''}`,'violation'));return}
+    d.violations.forEach(v=>add(`<h4>VIOLATION PROVEN BY A FAILING TEST</h4><div><span class="lv MUST">SPEC</span><b>${esc(v.clause_id)}</b> <span class="meta muted">${esc(v.source)}</span></div><q>“${esc(v.quote)}”</q>
+      <div class="muted mono" style="font-size:12px">failing test · ${esc(v.test_name)}</div><div class="out">${esc(v.output_snippet)}</div>${v.suggested_fix?`<div class="d"><b>Suggested fix:</b> ${esc(v.suggested_fix)}</div>`:''}`,'violation'));return}
   if(e.stage==='inspect'&&e.status==='done')return add(`<div class="t" style="color:var(--green)">🕵️ ${esc(e.title)} <span class="muted">${esc(e.detail)}</span></div>`,'green');
-  if(e.stage==='pr'&&e.status==='done'&&d.pr_url)return add(`<div class="t big">🍽️ ${esc(e.title)}</div><div class="row" style="margin-top:8px"><a class="btn primary" style="text-decoration:none" target="_blank" rel="noopener" href="${esc(d.pr_url)}">Open the PR on GitHub ↗</a></div>`,'green');
+  if(e.stage==='pr'&&e.status==='done'&&d.pr_url)return add(`<div class="t big">🍽️ ${esc(e.title)}</div><div class="d">${esc(e.detail&&!e.detail.startsWith('http')?e.detail:'')}</div><div class="row" style="margin-top:10px"><a class="btn primary" style="text-decoration:none" target="_blank" rel="noopener" href="${esc(d.pr_url)}">Open the PR on GitHub ↗</a></div>`,'green');
   if(e.stage==='human_review'&&e.status==='waiting_human'){document.querySelectorAll('.gate[data-g=review]').forEach(x=>x.remove());
     const g=add(`<div class="t">💬 ${esc(e.title)}</div><div class="d">Approve to squash-merge, or ask for changes — SpecGuard revises, re-proves and pushes a new round to the same PR.</div>
-      <textarea id="revEdit" placeholder="e.g. also reject an empty aud list"></textarea><div class="row" style="margin-top:10px"><button class="btn good" onclick='gate(${JSON.stringify(ctx.id)},"review","approve",this)'>Approve &amp; merge</button>
+      <textarea id="revEdit" placeholder="e.g. also validate the issuer (iss) claim"></textarea><div class="row" style="margin-top:12px"><button class="btn good" onclick='gate(${JSON.stringify(ctx.id)},"review","approve",this)'>Approve &amp; merge</button>
       <button class="btn" onclick='gate(${JSON.stringify(ctx.id)},"review","changes",this,"revEdit")'>Request changes</button></div>`,'gate');g.dataset.g='review';return}
   if(e.stage==='human_review'&&e.status==='done'){document.querySelectorAll('.gate[data-g=review]').forEach(x=>x.remove());return add(`<div class="t">💬 ${esc(e.title)} <span class="muted">${esc(e.detail)}</span></div>`,'small')}
   if(e.stage==='merged')return add(`<div class="t big" style="color:var(--green)">🔔 ${esc(e.title)}</div>`,'green');
@@ -308,10 +453,11 @@ async function gate(id,name,decision,btn,taId){
 }
 
 /* ---------- chat ---------- */
-function toggleChat(){const c=$('#chat');c.classList.toggle('open');if(c.classList.contains('open')&&!CHAT.length)bubble('a',`Hi ${ME.name.split(' ')[0]}! Ask me about a repo, how a run works, or what to build first.`)}
+function toggleChat(){const c=$('#chat');c.classList.toggle('open');if(c.classList.contains('open')&&!CHAT.length)bubble('a',`Hi ${ME.name.split(' ')[0]}! Ask about a repo, how a run works, or what to build first.`)}
 function bubble(r,t){CHAT.push({role:r==='u'?'user':'assistant',text:t});const m=document.createElement('div');m.className='m '+r;m.textContent=t;$('#msgs').appendChild(m);$('#msgs').scrollTop=1e9;return m}
 async function sendChat(e){e.preventDefault();const i=$('#chatIn'),t=i.value.trim();if(!t)return;i.value='';bubble('u',t);const w=bubble('a','…');
   try{const r=await post('/api/chat',{message:t,repo:SELECTED,history:CHAT.slice(0,-2)});w.textContent=r.reply;CHAT[CHAT.length-1].text=r.reply}catch(x){w.textContent='Sorry — '+x.message}}
+addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
 init();
 </script>
 </body>

@@ -6,6 +6,7 @@ import os
 import secrets
 import subprocess
 import threading
+import time
 import urllib.parse
 from pathlib import Path
 
@@ -16,7 +17,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import events, gh, llm, pipeline
+from . import events, gh, graph, llm, pipeline
 
 load_dotenv()
 STATIC = Path(__file__).parent / "static"
@@ -92,7 +93,7 @@ def auth_local(request: Request):
                            capture_output=True, text=True).stdout.strip()
     prof = gh.client(token).get_user()
     _login(request, token, {"login": prof.login, "name": prof.name, "avatar_url": prof.avatar_url})
-    return RedirectResponse("/")
+    return RedirectResponse("/" + request.query_params.get("to", ""))
 
 
 @app.post("/auth/logout")
@@ -109,17 +110,42 @@ def me(request: Request):
 
 
 # ---------- repos ----------
-@app.get("/api/repos")
-def repos(u: dict = Depends(user)):
-    g = gh.client(u["token"])
+_GRAPH_CACHE: dict = {}
+
+
+def _repo_rows(g) -> list:
     out = []
     for r in itertools.islice(g.get_user().get_repos(sort="pushed", direction="desc"), 60):
         p = r.permissions
+        parent = None
+        if r.fork:
+            try:
+                parent = r.parent.full_name if r.parent else None
+            except Exception:  # noqa: BLE001
+                parent = None
         out.append({"full_name": r.full_name, "name": r.name, "owner": r.owner.login, "language": r.language,
                     "stars": r.stargazers_count, "forks": r.forks_count, "size": r.size, "private": r.private,
                     "issues": r.open_issues_count, "pushed_at": r.pushed_at.isoformat() if r.pushed_at else "",
-                    "description": r.description or "", "write": bool(p and (p.push or p.admin)), "fork": r.fork})
+                    "created_at": r.created_at.isoformat() if r.created_at else "", "topics": list(r.topics or []),
+                    "description": r.description or "", "write": bool(p and (p.push or p.admin)),
+                    "fork": r.fork, "parent": parent, "archived": r.archived})
     return out
+
+
+@app.get("/api/repos")
+def repos(u: dict = Depends(user)):
+    return _repo_rows(gh.client(u["token"]))
+
+
+@app.get("/api/graph")
+def repo_graph(refresh: int = 0, u: dict = Depends(user)):
+    hit = _GRAPH_CACHE.get(u["login"])
+    if hit and not refresh and time.time() - hit[0] < 600:
+        return hit[1]
+    rows = _repo_rows(gh.client(u["token"]))
+    data = {"repos": rows, **graph.build_graph(rows)}
+    _GRAPH_CACHE[u["login"]] = (time.time(), data)
+    return data
 
 
 @app.get("/api/repo/{owner}/{name}")
