@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+httpx
+itsdangerous
+python-dotenv
+google-genai>=2.3.0
+PyGithub
+pymongo
+requests
+pytest
+pytest-json-report
+slack_bolt
