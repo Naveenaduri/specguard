@@ -1,0 +1,368 @@
+"""Build + review pipelines. Every stage goes through events.emit()."""
+import re
+import threading
+from pathlib import Path
+
+from . import events, gh, llm, review, sandbox, spec, testgen
+
+WORK = Path(".specguard/work")
+RUN_SLOTS = threading.Semaphore(2)  # global queue: max 2 concurrent runs
+
+
+# ---------- human gates ----------
+class Gates:
+    def __init__(self):
+        self._ev, self._res = {}, {}
+
+    def wait(self, run_id, name, auto=False, timeout=3600):
+        if auto:
+            return {"decision": "approve", "text": ""}
+        key = (run_id, name)
+        self._ev[key] = threading.Event()
+        if not self._ev[key].wait(timeout):
+            return {"decision": "timeout", "text": ""}
+        return self._res.pop(key)
+
+    def resolve(self, run_id, name, decision, text=""):
+        key = (run_id, name)
+        self._res[key] = {"decision": decision, "text": text}
+        if key in self._ev:
+            self._ev[key].set()
+            return True
+        return False
+
+
+GATES = Gates()
+
+
+# ---------- pure helpers (unit tested) ----------
+def parse_file_blocks(text: str) -> dict:
+    out = {}
+    for m in re.finditer(r"=== FILE: (.+?) ===\n(.*?)=== END ===", text, re.S):
+        path = m.group(1).strip().replace("\\", "/")
+        if path.startswith("/") or ".." in path.split("/") or re.match(r"^[A-Za-z]:", path):
+            continue
+        out[path] = m.group(2)
+    return out
+
+
+def evidence_table(rows: list) -> str:
+    md = "| Clause | Source | Test | Changed files | Before | After |\n|---|---|---|---|---|---|\n"
+    for r in rows:
+        cell = lambda s: str(s).replace("|", "\\|").replace("\n", " ")[:160]  # noqa: E731
+        md += (f"| {cell(r['clause_id'])} | {cell(r['source'])} | `{cell(r['test'])}` | {cell(r['files'])} "
+               f"| ❌ {cell(r['before'])} | ✅ {cell(r['after'])} |\n")
+    return md
+
+
+def slugify(s: str, n=28) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")[:n].strip("-") or "feature"
+
+
+def _first_line(output: str) -> str:
+    lines = [ln.strip() for ln in output.splitlines() if ln.strip()]
+    pick = next((ln for ln in reversed(lines) if ln.startswith("E ")), lines[-1] if lines else "failed")
+    return pick[:140]
+
+
+# ---------- build ----------
+def make_plan(feature, clauses, code_ctx) -> dict:
+    src = "\n\n".join(f"# {p}\n{t}" for p, t in code_ctx.items())
+    prompt = f"""Plan this change. Return ONLY JSON:
+{{"bullets": ["<=8 short bullets"], "files": [{{"path": "...", "change": "..."}}],
+  "api": "exact public signatures/behaviour tests may rely on, e.g. decode(token, key, audience=None) raises InvalidTokenError ..."}}
+
+FEATURE: {feature}
+CLAUSES: {[{k: c[k] for k in ('id', 'level', 'source', 'quote', 'requirement') if k in c} for c in clauses]}
+SOURCE:
+{src}"""
+    return llm.extract_json(llm.gemini(prompt, llm.ARGON, "medium"))
+
+
+def implement(work: Path, feature, clauses, plan, red_sources: dict, failures: str, thinking: str) -> dict:
+    code = gh.repo_files(work)
+    existing = gh.repo_files(work, exts=(".py",), skip=("specs", ".git"), limit=30000)
+    existing = {p: t for p, t in existing.items() if p.startswith("tests/")}
+    src = "\n\n".join(f"=== {p} ===\n{t}" for p, t in code.items())
+    tests = "\n\n".join(f"=== {p} ===\n{t}" for p, t in {**existing, **red_sources}.items())
+    prompt = f"""Implement the feature so ALL the tests below pass, without breaking existing behaviour.
+
+FEATURE: {feature}
+CLAUSES: {[{k: c[k] for k in ('id', 'level', 'source', 'quote', 'requirement') if k in c} for c in clauses]}
+PLAN: {plan}
+
+CURRENT SOURCE:
+{src}
+
+TESTS (do not modify tests):
+{tests}
+"""
+    if failures:
+        prompt += f"\nPREVIOUS ATTEMPT FAILED THESE TESTS:\n{failures}\n"
+    prompt += """
+Output format: for EVERY file you change or create (never test files), emit the COMPLETE new file content as:
+=== FILE: relative/path.py ===
+<full file content>
+=== END ===
+No other prose."""
+    blocks = parse_file_blocks(llm.gemini(prompt, llm.ARGON, thinking))
+    return {p: t for p, t in blocks.items() if not p.startswith("tests/")}
+
+
+def _apply(work: Path, files: dict):
+    for p, t in files.items():
+        dest = work / p
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(t if t.endswith("\n") else t + "\n", encoding="utf-8")
+
+
+def _suite(work: Path):
+    res = sandbox.run_tests(work, None)
+    bad = [r for r in res if r["status"] != "pass"]
+    return res, bad
+
+
+def _tdd_cycle(E, work, feature, clauses, plan, round_no, extra_tests=None, extra_failures=""):
+    """red -> commit tests -> implement -> green. Returns (ok, evidence_rows, files_changed, discarded)."""
+    E("tests_red", "started", f"Writing tests first (round {round_no})", f"{len(clauses)} clause(s)")
+    state = testgen.build_and_validate(work, clauses, plan.get("api", ""), lambda s, t, d="": E("tests_red", s, t, d))
+    red = [c for c in clauses if state[c["id"]]["status"] == "red"]
+    discarded = [{"clause_id": c["id"], "why": ("passes before implementation (non-discriminating)"
+                  if state[c["id"]]["status"] == "nondiscriminating" else "test errors (untestable)")}
+                 for c in clauses if state[c["id"]]["status"] != "red"]
+    E("tests_red", "done", f"{len(red)} red", ("discarded: " + ", ".join(f"{d['clause_id']} ({d['why']})" for d in discarded)
+                                              if discarded else "all tests failing as expected"),
+      {"tests": [{"name": t["name"], "clause_id": c["id"], "status": "fail", "output_snippet": t["output"][:300]}
+                 for c in red for t in state[c["id"]]["tests"] if t["status"] == "fail"], "discarded": discarded})
+    if not red:
+        return False, [], [], discarded
+    red_sources = {testgen.test_path(c["id"]): state[c["id"]]["source"] for c in red}
+    for p, s in {**red_sources, **(extra_tests or {})}.items():
+        (work / p).parent.mkdir(parents=True, exist_ok=True)
+        (work / p).write_text(s, encoding="utf-8")
+    gh.git(work, "add", "-A")
+    gh.git(work, "commit", "-q", "-m", f"test: failing spec tests for {', '.join(c['id'] for c in red)} (round {round_no})")
+    red_commit = gh.git(work, "rev-parse", "HEAD").strip()
+
+    failures, changed = extra_failures, {}
+    for attempt in range(3):
+        E("implement", "started", f"Implementing (attempt {attempt + 1})", "")
+        changed = implement(work, feature, clauses, plan, red_sources, failures, "medium" if attempt == 0 else "high")
+        if not changed:
+            failures = "no files were produced; output complete files in the required format"
+            continue
+        _apply(work, changed)
+        diff = gh.git(work, "diff", "-U2")
+        E("implement", "progress", f"Applied {len(changed)} file(s)", ", ".join(changed),
+          {"diff_preview": "\n".join(diff.splitlines()[:30]), "files_changed": list(changed)})
+        res, bad = _suite(work)
+        if not bad:
+            break
+        failures = "\n".join(f"{r['name']}: {r['output'][:400]}" for r in bad[:6])
+        E("implement", "progress", f"{len(bad)} test(s) still failing", _first_line(bad[0]["output"]))
+    else:
+        E("implement", "failed", "Could not reach green after 3 attempts", failures[:300])
+        return False, [], list(changed), discarded
+    E("implement", "done", "Implementation complete", ", ".join(changed))
+
+    rows = []
+    for c in red:
+        for t in state[c["id"]]["tests"]:
+            if t["status"] != "fail":
+                continue
+            after = next((r for r in res if r["name"] == t["name"]), None)
+            rows.append({"clause_id": c["id"], "source": c.get("source", ""), "test": t["name"].split("::")[-1],
+                         "files": ", ".join(changed), "before": _first_line(t["output"]),
+                         "after": "passed" if after and after["status"] == "pass" else "FAILED"})
+    E("tests_green", "done", f"{len(rows)} test(s) flipped red → green; {len(res)} total passing",
+      "existing tests still pass", {"tests": [{"name": r["test"], "clause_id": r["clause_id"], "status": "pass",
+                                                "output_snippet": r["before"]} for r in rows], "evidence": rows})
+    return True, rows, list(changed), discarded
+
+
+def _inspect(E, work, spec_text, all_clauses, feature_clauses, base_commit):
+    scope = review.scope_check([p for p in gh.git(work, "diff", "--name-only", base_commit).split()])
+    diff = gh.git(work, "diff", base_commit)
+    changed = [p for p in gh.git(work, "diff", "--name-only", base_commit).split() if not p.startswith("tests/")]
+    E("inspect", "started", "Independent inspection", scope["summary"])
+    result = review.review_changes(work, spec_text, all_clauses, diff, changed,
+                                   lambda stage, status, title, detail="", data=None: E("inspect", "progress", title, detail, data),
+                                   skip_quotes={c["quote"] for c in feature_clauses})
+    return scope, result
+
+
+def run_build(run_id, repo, feature, token, user="", auto=False, merge=True, dry=False):
+    E = lambda stage, status, title, detail="", data=None: events.emit(run_id, stage, status, title, detail, data)  # noqa: E731
+    try:
+        with RUN_SLOTS:
+            _run_build(E, run_id, repo, feature, token, user, auto, merge, dry)
+    except Exception as exc:  # noqa: BLE001
+        E("pr", "failed", "Run failed", f"{type(exc).__name__}: {exc}")
+        events.update_run(run_id, status="failed")
+
+
+def _run_build(E, run_id, repo, feature, token, user, auto, merge, dry=False):
+    g = gh.client(token)
+    E("ticket", "done", "Request received", feature, {"repo": repo})
+    acc = gh.access(g, repo)
+    sc = review.scope_check([], write=acc["write"], need_write=True)
+    if not sc["ok"]:
+        E("ticket", "failed", sc["summary"], "Link an identity with write access, then retry")
+        return
+    work = gh.clone(repo, token, WORK / run_id / "repo")
+    base_commit = gh.git(work, "rev-parse", "HEAD").strip()
+    branch = f"feat/{slugify(user or 'user', 12)}-{slugify(feature)}"
+    gh.git(work, "checkout", "-q", "-b", branch)
+    spec_text = spec.load_spec(work)
+    if not spec_text:
+        E("spec", "failed", "No spec found", "Add markdown spec files under specs/ in the repo")
+        return
+
+    # --- spec (human gate) ---
+    E("spec", "started", "Reading spec, selecting clauses", "")
+    clauses = spec.pick_feature_clauses(feature, spec_text)
+    while True:
+        E("spec", "waiting_human", f"{len(clauses)} clauses — approve spec?", "", {"clauses": clauses})
+        d = GATES.wait(run_id, "spec", auto)
+        if d["decision"] == "approve":
+            break
+        if d["decision"] == "timeout":
+            E("spec", "failed", "Timed out waiting for approval")
+            return
+        E("spec", "started", "Revising clauses from your edit", d["text"])
+        clauses = spec.pick_feature_clauses(feature, spec_text, d["text"], clauses)
+    E("spec", "done", f"Spec approved: {len(clauses)} clauses", "", {"clauses": clauses})
+
+    # --- plan ---
+    E("plan", "started", "Planning", "")
+    plan = make_plan(feature, clauses, gh.repo_files(work))
+    E("plan", "done", "Plan ready", "\n".join(f"• {b}" for b in plan.get("bullets", [])[:8]), {"files": plan.get("files", [])})
+
+    # --- round 1 ---
+    all_clauses = spec.extract_all_clauses(spec_text)
+    ok, rows, files, _ = _tdd_cycle(E, work, feature, clauses, plan, 1)
+    if not ok:
+        E("pr", "failed", "No green implementation; stopping", "")
+        return
+    all_rows = list(rows)
+    for rnd in range(2):  # inspect -> feed violations back (max 2 rounds)
+        scope, result = _inspect(E, work, spec_text, all_clauses, clauses, base_commit)
+        E("inspect", "done" if not result["violations"] else "failed",
+          "Inspection clean" if not result["violations"] else f"{len(result['violations'])} violation(s) proven",
+          scope["summary"], {"violations": [{k: v[k] for k in v if k != "test_source"} for v in result["violations"]]})
+        if not result["violations"]:
+            break
+        extra = {testgen.test_path(v["clause_id"]): v["test_source"] for v in result["violations"]}
+        for p, s in extra.items():
+            (work / p).write_text(s, encoding="utf-8")
+        fb = "\n".join(f"{v['clause_id']} {v['quote']}\n{v['output_snippet']}" for v in result["violations"])
+        gh.git(work, "add", "-A")
+        gh.git(work, "commit", "-q", "-m", "test: failing tests proving violations found by inspection")
+        changed = implement(work, feature, clauses, plan, extra, fb, "high")
+        _apply(work, changed)
+        res, bad = _suite(work)
+        for v in result["violations"]:
+            all_rows.append({"clause_id": v["clause_id"], "source": v["source"], "test": v["test_name"].split("::")[-1],
+                             "files": ", ".join(changed), "before": _first_line(v["output_snippet"]),
+                             "after": "passed" if not bad else "FAILED"})
+        E("tests_green", "done", "Inspection findings fixed" if not bad else "Fix attempt failed", "", {"evidence": all_rows})
+    gh.git(work, "add", "-A")
+    gh.git(work, "commit", "-q", "-m", f"feat: {feature[:60]}\n\nClauses: {', '.join(c['id'] for c in clauses)}")
+
+    if dry:
+        E("pr", "done", "Dry run: stopped before pushing / opening a PR", "", {"evidence": all_rows})
+        events.update_run(run_id, status="done")
+        return
+    # --- PR ---
+    E("pr", "started", "Opening pull request", branch)
+    gh.push(work, repo, token, branch, force=True)
+    run = events.get_run(run_id) or {}
+    body = (f"## SpecGuard evidence — {feature}\n\n{evidence_table(all_rows)}\n"
+            f"{scope['summary']}\n\nRun: {run_id}\n")
+    gr = g.get_repo(repo)
+    pr = gr.create_pull(title=f"feat: {feature[:70]}", body=body, head=branch, base=acc["default_branch"])
+    events.update_run(run_id, pr_url=pr.html_url)
+    E("pr", "done", f"PR #{pr.number} opened", pr.html_url, {"pr_number": pr.number, "pr_url": pr.html_url})
+
+    # --- human review loop ---
+    rnd = 1
+    while True:
+        E("human_review", "waiting_human", "Approve or request changes", pr.html_url)
+        d = GATES.wait(run_id, "review", auto)
+        E("human_review", "done", f"Decision: {d['decision']}", d["text"], {"decision": d["decision"], "text": d["text"]})
+        if d["decision"] == "approve":
+            if merge:
+                pr.merge(merge_method="squash")
+                E("merged", "done", "Squash-merged ✅", pr.html_url)
+            events.update_run(run_id, status="done")
+            return
+        if d["decision"] == "timeout":
+            events.update_run(run_id, status="done")
+            return
+        rnd += 1
+        E("revise", "started", f"Round {rnd}: revising from feedback", d["text"])
+        new = spec.pick_feature_clauses(feature, spec_text, d["text"], clauses)
+        old_ids = {c["id"] for c in clauses}
+        added = [c for c in new if c["id"] not in old_ids or c["quote"] not in {o["quote"] for o in clauses}] or new
+        clauses = new
+        E("spec", "done", f"Round {rnd}: {len(added)} new/changed clause(s)", "", {"clauses": clauses})
+        plan = make_plan(feature, clauses, gh.repo_files(work))
+        ok, rows, files, _ = _tdd_cycle(E, work, feature, added, plan, rnd)
+        if not ok:
+            E("pr", "failed", f"Round {rnd} did not reach green", "")
+            return
+        gh.git(work, "add", "-A")
+        gh.git(work, "commit", "-q", "-m", f"feat: address review feedback (round {rnd})")
+        gh.push(work, repo, token, branch)
+        all_rows += rows
+        pr.edit(body=f"## SpecGuard evidence — {feature}\n\n{evidence_table(all_rows)}\nRun: {run_id}\n")
+        pr.create_issue_comment(f"### Round {rnd} evidence\n\n{evidence_table(rows)}")
+        E("pr", "done", f"Round {rnd} pushed to PR #{pr.number}", pr.html_url, {"pr_number": pr.number, "pr_url": pr.html_url})
+
+
+# ---------- PR review ----------
+def run_review(run_id, repo, pr_number, token, comment=False):
+    E = lambda stage, status, title, detail="", data=None: events.emit(run_id, stage, status, title, detail, data)  # noqa: E731
+    try:
+        with RUN_SLOTS:
+            _run_review(E, run_id, repo, pr_number, token, comment)
+    except Exception as exc:  # noqa: BLE001
+        E("verdict", "failed", "Review failed", f"{type(exc).__name__}: {exc}")
+        events.update_run(run_id, status="failed")
+
+
+def _run_review(E, run_id, repo, pr_number, token, comment):
+    g = gh.client(token)
+    acc = gh.access(g, repo)
+    if not acc["read"]:
+        E("received", "failed", "Scope: ❌ identity cannot read this repository")
+        return
+    gr = g.get_repo(repo)
+    pr = gr.get_pull(pr_number)
+    files = list(pr.get_files())
+    changed = [f.filename for f in files]
+    diff = "\n".join(f"--- {f.filename}\n{f.patch or ''}" for f in files)
+    scope = review.scope_check(changed, write=acc["write"])
+    E("received", "done", f"PR #{pr_number}: {pr.title}", scope["summary"],
+      {"pr_number": pr_number, "pr_url": pr.html_url, "files": changed})
+    events.update_run(run_id, pr_url=pr.html_url)
+    work = gh.clone(repo, token, WORK / run_id / "repo")
+    gh.git(work, "fetch", "-q", "origin", f"pull/{pr_number}/head:pr-{pr_number}")
+    gh.git(work, "checkout", "-q", f"pr-{pr_number}")
+    spec_text = spec.load_spec(work)
+    if not spec_text:
+        E("verdict", "done", "No spec in repo; nothing to check", "Add markdown specs under specs/")
+        return
+    clauses = spec.extract_all_clauses(spec_text)
+    result = review.review_changes(work, spec_text, clauses, diff, [c for c in changed if not c.startswith("tests/")],
+                                   lambda stage, status, title, detail="", data=None: E(stage, status, title, detail, data))
+    E("verdict", "done", f"{len(result['violations'])} proven violation(s)" if result["violations"]
+      else f"spec-conformant for {', '.join(result['conformant'] or result['touched']) or 'no clauses touched'}",
+      scope["summary"], {"violations": [{k: v[k] for k in v if k != "test_source"} for v in result["violations"]]})
+    body = review.render_comment(scope, result)
+    if comment:
+        pr.create_issue_comment(body)
+        E("comment", "done", "Posted review to the PR", pr.html_url, {"pr_number": pr_number, "pr_url": pr.html_url})
+    else:
+        E("comment", "done", "Review ready (not posted to GitHub)", "", {"body": body})
+    events.update_run(run_id, status="done")

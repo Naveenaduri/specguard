@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+.cache/
+.specguard_cache/
+*.sqlite
+.pytest_cache/
+.specguard/
