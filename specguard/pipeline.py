@@ -228,6 +228,11 @@ def _run_build(E, run_id, repo, feature, token, user, auto, merge, dry=False):
     base_commit = gh.git(work, "rev-parse", "HEAD").strip()
     branch = f"feat/{slugify(user or 'user', 12)}-{slugify(feature)}"
     gh.git(work, "checkout", "-q", "-b", branch)
+    if not any(f for f in work.rglob("*.py") if ".git" not in f.parts):  # tests are executed with pytest, so a non-Python repo cannot be proven
+        E("spec", "failed", "PRProof builds with Python tests today", "This repository has no Python code, so it cannot run the tests it writes. "
+          "Try a Python repository such as tinyjwt.")
+        events.update_run(run_id, status="failed")
+        return
     spec_text = spec.load_spec(work)
     has_specs = bool(spec_text)
     if not has_specs:  # requirements come from the user's own words instead of a standard
@@ -258,7 +263,9 @@ def _run_build(E, run_id, repo, feature, token, user, auto, merge, dry=False):
     all_clauses = spec.extract_all_clauses(spec_text) if has_specs else []
     ok, rows, files, _ = _tdd_cycle(E, work, feature, clauses, plan, 1)
     if not ok:
-        E("pr", "failed", "No green implementation; stopping", "")
+        E("pr", "failed", "No green implementation; stopping",
+          "Either no failing test could be produced for this request (the feature may already work), or the implementation never passed the tests.")
+        events.update_run(run_id, status="failed")
         return
     all_rows = list(rows)
     scope = review.scope_check(gh.git(work, "diff", "--name-only", base_commit).split())
