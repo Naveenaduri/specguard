@@ -45,6 +45,9 @@ PUBLIC_TOKEN = os.getenv("PUBLIC_READ_TOKEN", "")  # read-only token used for gu
 if not PUBLIC_TOKEN and ALLOW_LOCAL:  # dev convenience: borrow the local gh login so guests aren't capped at 60 req/hour
     PUBLIC_TOKEN = subprocess.run(["gh", "auth", "token", *(["--user", os.getenv("GITHUB_ORG", "")] if os.getenv("GITHUB_ORG") else [])],
                                   capture_output=True, text=True).stdout.strip()
+DEMO_OWNER = os.getenv("DEMO_BUILD_OWNER") or (os.getenv("GITHUB_ORG", "") if PUBLIC_TOKEN else "")  # guests may build on this account's repos only
+ANON_BUILDS: dict = {}
+ANON_BUILD_LIMIT = 3
 ANON_RUNS: dict = {}  # guest id -> reviews started (free preview quota)
 ANON_LIMIT = 3
 
@@ -95,7 +98,7 @@ def index():
 
 @app.get("/auth/config")
 def auth_config():
-    return {"github": bool(CLIENT_ID and CLIENT_SECRET), "local": ALLOW_LOCAL}
+    return {"github": bool(CLIENT_ID and CLIENT_SECRET), "local": ALLOW_LOCAL, "demo_owner": DEMO_OWNER if PUBLIC_TOKEN else ""}
 
 
 @app.get("/auth/github")
@@ -424,14 +427,26 @@ def _start(target, *args, **kw):
 
 
 @app.post("/api/build")
-async def build(request: Request, u: dict = Depends(user)):
+async def build(request: Request, v: dict = Depends(viewer)):
     b = await request.json()
-    repo = gh.parse_repo(b["repo"], u["login"])
     feature = b["feature"].strip()
     if not feature:
         raise HTTPException(400, "describe the feature")
-    run = events.create_run("build", feature, repo, u["login"])
-    _start(pipeline.run_build, run["run_id"], repo, feature, u["token"], u["login"])
+    token, acting = v["token"], v["login"]
+    if v.get("anon"):  # demo mode: the host's token, but only on the host account's own repos so strangers' repos are never touched
+        if not DEMO_OWNER or not PUBLIC_TOKEN:
+            raise HTTPException(401, "Sign in with GitHub to build a feature.")
+        repo = gh.parse_repo(b["repo"], DEMO_OWNER)
+        if repo.split("/")[0].lower() != DEMO_OWNER.lower():
+            raise HTTPException(403, f"Without signing in, builds run only on {DEMO_OWNER}'s repositories. Sign in with GitHub to build on yours.")
+        if ANON_BUILDS.get(v["login"], 0) >= ANON_BUILD_LIMIT:
+            raise HTTPException(429, f"Demo build limit reached ({ANON_BUILD_LIMIT}). Sign in with GitHub to keep going.")
+        ANON_BUILDS[v["login"]] = ANON_BUILDS.get(v["login"], 0) + 1
+        token, acting = PUBLIC_TOKEN, DEMO_OWNER
+    else:
+        repo = gh.parse_repo(b["repo"], v["login"])
+    run = events.create_run("build", feature, repo, v["login"])
+    _start(pipeline.run_build, run["run_id"], repo, feature, token, acting)
     return {"run_id": run["run_id"]}
 
 
@@ -524,32 +539,3 @@ async def stream(run_id: str, request: Request, u: dict = Depends(viewer)):
             await asyncio.sleep(0.6)
 
     return StreamingResponse(gen(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
-
-
-# ---------- chat ----------
-ABOUT = """PRProof is an agent that builds features and reviews PRs against written specs (RFCs, standards, API contracts).
-Build: request -> spec clauses cited from the repo's specs/ folder (you approve) -> plan -> tests written FIRST and shown red ->
-implementation -> same tests green + existing tests still pass -> independent inspection (SubQ routes which clauses the change
-touches, generated tests prove violations) -> PR with an evidence table -> you approve or request changes (new round on the same PR).
-Review: pick a PR; deterministic scope check (access + sensitive paths like .github/workflows) plus a spec agent that comments
-ONLY on violations proven by a failing test, otherwise says 'spec-conformant for clauses X, Y'.
-Rules: a test that passes before implementation is discarded as non-discriminating; tests that error are regenerated once, then dropped as untestable;
-never a violation without a failing test. Repos need markdown specs under specs/."""
-
-
-@app.post("/api/chat")
-async def chat(request: Request, u: dict = Depends(user)):
-    b = await request.json()
-    ctx = ""
-    if b.get("repo"):
-        try:
-            h = repo_highlights(*b["repo"].split("/", 1), v=u)
-            ctx = f"\nSelected repo {h['repo']}: access={h['access']}, health={h['health']}, open PRs={h['prs']}\nReport: {h['report']}"
-        except Exception as exc:  # noqa: BLE001
-            ctx = f"\n(could not read selected repo: {exc})"
-    history = "\n".join(f"{m['role']}: {m['text']}" for m in b.get("history", [])[-6:])
-    prompt = (f"You are the PRProof assistant inside its web app. Signed-in GitHub user: {u['login']}.\n{ABOUT}{ctx}\n\n"
-              f"Conversation so far:\n{history}\n\nUser: {b['message']}\n\nAnswer briefly and concretely. If they want to build or "
-              f"review something, tell them which button to use (Create a feature / Read a repo / Explore).")
-    text = await asyncio.to_thread(llm.gemini, prompt, llm.FLASH, "low")
-    return {"reply": text}
