@@ -41,6 +41,22 @@ class fast:
         FAST.append([round(self.t, 2), round(time.time() - T0[0], 2), self.speed])
 
 
+STILL = OUT / "signed_in_build.png"
+
+
+def show_still():
+    """A full-bleed page for a screenshot, with a slow push-in so it reads as footage."""
+    page = OUT / "still.html"
+    page.write_text("""<!doctype html><meta charset=utf-8><style>html,body{margin:0;height:100%;background:#05070d;overflow:hidden}
+.w{height:100%;display:flex;align-items:center;justify-content:center}
+img{width:100%;animation:z 16s ease-out forwards;transform-origin:30% 35%}
+@keyframes z{from{transform:scale(1)}to{transform:scale(1.14)}}
+.t{position:fixed;left:24px;bottom:22px;padding:8px 14px;border-radius:99px;background:rgba(5,7,13,.85);border:1px solid #38e1ff;color:#38e1ff;
+font:600 14px system-ui}</style><div class=w><img src="signed_in_build.png"></div><div class=t>Signed in with GitHub: build on your own repos</div>""",
+                    encoding="utf-8")
+    return page.as_uri()
+
+
 def pause(s):
     time.sleep(s)
 
@@ -153,6 +169,11 @@ def main():
         page.select_option("#bsel", "Naveenaduri/tinyjwt")
         cue("It can also build. You pick a repo, describe the feature, or start from one of its open issues, and no sign-in is needed in demo mode.")
         pause(6)
+        if STILL.exists():  # a signed-in build run (screenshot): the pipeline stages when you sign in with GitHub
+            page.goto(show_still())
+            cue("Signed in, the same build runs on your own repos, private ones too. It takes an issue, writes failing tests first, "
+                "implements, inspects, and opens a PR you approve.")
+            pause(10)
         page.goto("https://github.com/Naveenaduri/tinyjwt/pull/3")
         cue("This pull request was opened by a build. Tests were written first and failed, then the implementation made them pass, and the evidence is attached to the PR.")
         pause(3)
