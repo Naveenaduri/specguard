@@ -213,7 +213,7 @@ def _run_build(E, run_id, repo, feature, token, user, auto, merge, dry=False):
     forked = not acc["write"]  # no write access: work in a fork and open the PR upstream
     push_repo, head_owner = repo, None
     if forked:
-        E("ticket", "progress", "No write access here, so SpecGuard will fork it to your account", "The PR opens from your fork")
+        E("ticket", "progress", "No write access here, so PRProof will fork it to your account", "The PR opens from your fork")
         me = g.get_user()
         fk = me.create_fork(g.get_repo(repo))
         for _ in range(40):  # forks are created asynchronously
@@ -263,7 +263,7 @@ def _run_build(E, run_id, repo, feature, token, user, auto, merge, dry=False):
     all_rows = list(rows)
     scope = review.scope_check(gh.git(work, "diff", "--name-only", base_commit).split())
     if not has_specs:
-        E("inspect", "done", "Inspection skipped (no specs/ folder)", "Open the PR in SpecGuard's review to get the rubric review")
+        E("inspect", "done", "Inspection skipped (no specs/ folder)", "Open the PR in PRProof's review to get the rubric review")
     for rnd in range(2 if has_specs else 0):  # inspect -> feed violations back (max 2 rounds)
         scope, result = _inspect(E, work, spec_text, all_clauses, clauses, base_commit)
         E("inspect", "done" if not result["violations"] else "failed",
@@ -296,7 +296,7 @@ def _run_build(E, run_id, repo, feature, token, user, auto, merge, dry=False):
     E("pr", "started", "Opening pull request", branch)
     gh.push(work, push_repo, token, branch, force=True)
     run = events.get_run(run_id) or {}
-    body = (f"## SpecGuard evidence — {feature}\n\n{evidence_table(all_rows)}\n"
+    body = (f"## PRProof evidence — {feature}\n\n{evidence_table(all_rows)}\n"
             f"{scope['summary']}\n\nRun: {run_id}\n")
     gr = g.get_repo(repo)
     head_ref = f"{head_owner}:{branch}" if forked else branch
@@ -339,7 +339,7 @@ def _run_build(E, run_id, repo, feature, token, user, auto, merge, dry=False):
             if discarded and all("non-discriminating" in d["why"] for d in discarded):
                 msg = (f"Round {rnd}: the feedback is already satisfied by the current implementation — "
                        f"{len(discarded)} new test(s) passed before any change, so they were discarded as non-discriminating. No code change needed.")
-                pr.create_issue_comment("### SpecGuard\n\n" + msg)
+                pr.create_issue_comment("### PRProof\n\n" + msg)
                 E("pr", "done", f"Round {rnd}: already satisfied, nothing to change", msg, {"pr_number": pr.number, "pr_url": pr.html_url})
                 continue
             E("pr", "failed", f"Round {rnd} did not reach green", "")
@@ -348,7 +348,7 @@ def _run_build(E, run_id, repo, feature, token, user, auto, merge, dry=False):
         gh.git(work, "commit", "-q", "-m", f"feat: address review feedback (round {rnd})")
         gh.push(work, push_repo, token, branch)
         all_rows += rows
-        pr.edit(body=f"## SpecGuard evidence — {feature}\n\n{evidence_table(all_rows)}\nRun: {run_id}\n")
+        pr.edit(body=f"## PRProof evidence — {feature}\n\n{evidence_table(all_rows)}\nRun: {run_id}\n")
         pr.create_issue_comment(f"### Round {rnd} evidence\n\n{evidence_table(rows)}")
         E("pr", "done", f"Round {rnd} pushed to PR #{pr.number}", pr.html_url, {"pr_number": pr.number, "pr_url": pr.html_url})
 
@@ -427,7 +427,7 @@ def _run_review(E, run_id, repo, pr_number, token, comment):
         tests.update(t)
     else:
         why = ("this repository is too large for the test sandbox" if py and not can_run else
-               "SpecGuard executes tests for Python projects today" if not py else "nothing to test")
+               "PRProof executes tests for Python projects today" if not py else "nothing to test")
         for f in findings:
             f["proof"] = f"Not executed: {why}"
     if specs and work:
@@ -458,8 +458,8 @@ def _run_review(E, run_id, repo, pr_number, token, comment):
         pr.create_issue_comment(body)
         state, desc = rubric.status_for(verdict, tests)
         try:  # a commit status lets branch protection block the merge when a defect is proven
-            gr.get_commit(pr.head.sha).create_status(state, target_url=pr.html_url, description=desc, context="specguard/proof")
-            E("comment", "running", f"Set the specguard/proof check to {state}", desc)
+            gr.get_commit(pr.head.sha).create_status(state, target_url=pr.html_url, description=desc, context="prproof/verify")
+            E("comment", "running", f"Set the prproof/verify check to {state}", desc)
         except Exception as exc:  # noqa: BLE001
             E("comment", "running", "Could not set the merge check", str(exc)[:160])
         E("comment", "done", "Posted review to the PR", pr.html_url, {"pr_number": pr_number, "pr_url": pr.html_url})

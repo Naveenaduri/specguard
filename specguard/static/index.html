@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SpecGuard</title>
+<title>PRProof – executed proof for AI pull requests</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -274,7 +274,7 @@ h2{font-size:30px} .sub{margin:8px 0 38px} label{margin:24px 0 10px}
 <header>
   <div class="logo" onclick="go('explore')">
     <svg viewBox="0 0 32 32" fill="none"><path d="M16 2l11 4v9c0 7-4.6 12.2-11 15C9.6 27.200 5 22 5 15V6l11-4z" stroke="url(#g)" stroke-width="1.8"/><circle cx="16" cy="11" r="2.2" fill="#38e1ff"/><circle cx="11" cy="19" r="2" fill="#8b7bff"/><circle cx="21" cy="19" r="2" fill="#3dffb0"/><path d="M16 13l-4 5M16 13l4 5M13 19h6" stroke="#9fb0d4" stroke-width="1"/><defs><linearGradient id="g" x1="5" y1="2" x2="27" y2="30"><stop stop-color="#38e1ff"/><stop offset="1" stop-color="#8b7bff"/></linearGradient></defs></svg>
-    <b>SpecGuard</b>
+    <b>PRProof</b>
   </div>
   <nav id="nav"><button data-v="explore" onclick="go('explore')">Explore</button><button data-v="prs" onclick="go('prs')">Pull requests</button><button data-v="build" onclick="go('build')">Build</button></nav>
   <div class="sp"></div>
@@ -288,7 +288,7 @@ h2{font-size:30px} .sub{margin:8px 0 38px} label{margin:24px 0 10px}
 
 <button id="chatBtn" class="hide" onclick="toggleChat()" aria-label="Chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></button>
 <div id="chat">
-  <div class="ch">Ask SpecGuard<span class="sp"></span><span class="muted mono" id="chatCtx" style="font-size:11px"></span><button class="btn sm" onclick="toggleChat()">✕</button></div>
+  <div class="ch">Ask PRProof<span class="sp"></span><span class="muted mono" id="chatCtx" style="font-size:11px"></span><button class="btn sm" onclick="toggleChat()">✕</button></div>
   <div id="msgs"></div>
   <form onsubmit="sendChat(event)"><input id="chatIn" placeholder="Ask about a repo or how a run works…" autocomplete="off"><button class="btn primary sm">Send</button></form>
 </div>
@@ -640,11 +640,11 @@ function prsHtml(d){
 
 /* ---------- build a feature (sign-in) ---------- */
 async function buildView(repo){
-  if(!ME){app.innerHTML=`<h2>Build a feature</h2><p class="sub">SpecGuard writes the tests first, implements until they pass, and opens a PR with the proof.</p>
+  if(!ME){app.innerHTML=`<h2>Build a feature</h2><p class="sub">PRProof writes the tests first, implements until they pass, and opens a PR with the proof.</p>
     <div class="panel" style="max-width:640px"><p style="margin:0 0 20px">Building opens a pull request in your name, so it needs a GitHub sign-in. Exploring and reviewing do not.</p><a class="btn primary" style="text-decoration:none" href="${SIGNIN}">Sign in with GitHub</a></div>`;return}
   const t=parseTarget(repo||TGT||''),owner=(t.owner&&t.owner.toLowerCase()!==ME.login.toLowerCase())?t.owner:'';
   setTgt(t.repo||t.owner||'');
-  app.innerHTML=`<h2>Build a feature</h2><p class="sub">Written test-first, proven, then opened as a PR. No write access? SpecGuard forks the repo and opens the PR from your fork.</p>
+  app.innerHTML=`<h2>Build a feature</h2><p class="sub">Written test-first, proven, then opened as a PR. No write access? PRProof forks the repo and opens the PR from your fork.</p>
   <div class="panel" style="max-width:760px"><label style="margin-top:0">Repository · <span class="mono">${esc(owner||ME.login)}</span></label><select id="bsel" onchange="bPick()"><option>Loading repositories…</option></select><div id="binfo"></div><div class="ferr" id="brepoErr"></div>
   <label>What should it do?</label><textarea id="bfeat" placeholder="e.g. add audience (aud) claim validation to decode"></textarea>
   <p class="muted" style="font-size:12.5px;margin:12px 0 0">If the repo has a specs/ folder, requirements are cited from it. Otherwise they are derived from your request.</p>
@@ -742,7 +742,7 @@ function render(e,ctx){
   if(e.stage==='inspect'&&e.status==='done')return add(`<div class="t" style="color:var(--green)">🕵️ ${esc(e.title)} <span class="muted">${esc(e.detail)}</span></div>`,'green');
   if(e.stage==='pr'&&e.status==='done'&&d.pr_url)return add(`<div class="t big">🍽️ ${esc(e.title)}</div><div class="d">${esc(e.detail&&!e.detail.startsWith('http')?e.detail:'')}</div><div class="row" style="margin-top:10px"><a class="btn primary" style="text-decoration:none" target="_blank" rel="noopener" href="${esc(d.pr_url)}">Open the PR on GitHub ↗</a></div>`,'green');
   if(e.stage==='human_review'&&e.status==='waiting_human'){document.querySelectorAll('.gate[data-g=review]').forEach(x=>x.remove());
-    const g=add(`<div class="t">💬 ${esc(e.title)}</div><div class="d">Approve to squash-merge, or ask for changes — SpecGuard revises, re-proves and pushes a new round to the same PR.</div>
+    const g=add(`<div class="t">💬 ${esc(e.title)}</div><div class="d">Approve to squash-merge, or ask for changes — PRProof revises, re-proves and pushes a new round to the same PR.</div>
       <textarea id="revEdit" placeholder="e.g. also validate the issuer (iss) claim"></textarea><div class="row" style="margin-top:12px"><button class="btn good" onclick='gate(${JSON.stringify(ctx.id)},"review","approve",this)'>Approve &amp; merge</button>
       <button class="btn" onclick='gate(${JSON.stringify(ctx.id)},"review","changes",this,"revEdit")'>Request changes</button></div>`,'gate');g.dataset.g='review';return}
   if(e.stage==='human_review'&&e.status==='done'){document.querySelectorAll('.gate[data-g=review]').forEach(x=>x.remove());return add(`<div class="t">💬 ${esc(e.title)} <span class="muted">${esc(e.detail)}</span></div>`,'small')}
@@ -756,7 +756,7 @@ function render(e,ctx){
 }
 async function postReview(id,btn){btn.disabled=true;try{await post(`/api/runs/${id}/comment`,{})}catch(e){alert(e.message);btn.disabled=false}}
 async function gate(id,name,decision,btn,taId){
-  const text=taId?$('#'+taId).value.trim():'';if(decision!=='approve'&&!text){alert('Tell SpecGuard what to change.');return}
+  const text=taId?$('#'+taId).value.trim():'';if(decision!=='approve'&&!text){alert('Tell PRProof what to change.');return}
   btn.disabled=true;try{await post(`/api/runs/${id}/gate`,{name,decision,text})}catch(e){alert(e.message);btn.disabled=false}
 }
 

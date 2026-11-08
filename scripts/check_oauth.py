@@ -14,7 +14,7 @@ if not (cid and secret):
 
 Create the OAuth App (about 2 minutes):
   1. github.com -> Settings -> Developer settings -> OAuth Apps -> New OAuth App
-  2. Application name: SpecGuard
+  2. Application name: PRProof
      Homepage URL:     %s
      Authorization callback URL: %s/auth/callback
   3. Register application, then 'Generate a new client secret'

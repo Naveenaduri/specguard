@@ -2,7 +2,7 @@
 
 Shape inspired by published AI-review practice (CodeRabbit comments read: "Severity · Category · Effort",
 a bold one-line problem, a short concrete explanation, a proposed fix, plus a PR walkthrough summary).
-SpecGuard adds what those lack: a Proof row. A finding is only 'proven' if an executed test failed.
+PRProof adds what those lack: a Proof row. A finding is only 'proven' if an executed test failed.
 """
 import re
 from pathlib import Path
@@ -194,7 +194,7 @@ def _line(k: str, v: str) -> str:
 
 
 def render_comment(card: dict) -> str:
-    md = "🛡️ **SpecGuard review**\n<!-- specguard -->\n\n"
+    md = "🛡️ **PRProof review**\n<!-- specguard -->\n\n"
     md += _line("Verdict", card["verdict"]["label"]) + _line("Risk", card["risk"]["label"])
     md += _line("What changed", card.get("summary", ""))
     t = card.get("tests", {})

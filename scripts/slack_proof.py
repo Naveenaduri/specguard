@@ -20,7 +20,7 @@ def progress(done: int) -> str:
 def on_mention(event, client, say):
     print(f"[proof] app_mention user={event.get('user')} channel={event['channel']} text={event.get('text')!r}", flush=True)
     thread_ts = event.get("thread_ts") or event["ts"]
-    parent = client.chat_postMessage(channel=event["channel"], thread_ts=thread_ts, text="SpecGuard working…",
+    parent = client.chat_postMessage(channel=event["channel"], thread_ts=thread_ts, text="PRProof working…",
                                      blocks=[{"type": "section", "text": {"type": "mrkdwn", "text": progress(0)}}])
     print("[proof] parent posted ts=" + parent["ts"], flush=True)
     client.chat_postMessage(
@@ -41,7 +41,7 @@ def on_approve(ack, body, client):
     ch, parent_ts = body["channel"]["id"], body["actions"][0]["value"]
     print(f"[proof] button approve_spec user={body['user']['id']} channel={ch}", flush=True)
     for i in range(1, 5):
-        client.chat_update(channel=ch, ts=parent_ts, text="SpecGuard working…",
+        client.chat_update(channel=ch, ts=parent_ts, text="PRProof working…",
                            blocks=[{"type": "section", "text": {"type": "mrkdwn", "text": progress(i)}}])
         print(f"[proof] chat.update step={i}", flush=True)
         time.sleep(1)

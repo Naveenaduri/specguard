@@ -9,7 +9,7 @@ from github import Auth, Github
 
 from .events import redact
 
-GIT_ID = ["-c", "user.name=SpecGuard", "-c", "user.email=specguard@users.noreply.github.com"]
+GIT_ID = ["-c", "user.name=PRProof", "-c", "user.email=specguard@users.noreply.github.com"]
 
 
 def client(token: str = "") -> Github:

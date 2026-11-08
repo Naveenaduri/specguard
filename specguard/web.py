@@ -28,7 +28,7 @@ CLIENT_ID, CLIENT_SECRET = os.getenv("GITHUB_CLIENT_ID", ""), os.getenv("GITHUB_
 ALLOW_LOCAL = os.getenv("SPECGUARD_ALLOW_LOCAL_LOGIN") == "1"  # dev only: log in with the local `gh` CLI token
 SESSIONS: dict = {}  # sid -> {login, name, avatar, token}  (tokens live in server memory only)
 
-app = FastAPI(title="SpecGuard")
+app = FastAPI(title="PRProof")
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET") or secrets.token_hex(32),
                    same_site="lax", https_only=False, max_age=60 * 60 * 8)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
@@ -414,7 +414,7 @@ def pr_check(url: str, v: dict = Depends(viewer)):
         raise HTTPException(404, _missing_msg(v, "pull request", exc)) from exc
     _public_only(r, v)
     if pr.state != "open":
-        raise HTTPException(409, f"PR #{number} is {'merged' if pr.merged else 'closed'}. SpecGuard reviews open PRs. Paste one that is still open.")
+        raise HTTPException(409, f"PR #{number} is {'merged' if pr.merged else 'closed'}. PRProof reviews open PRs. Paste one that is still open.")
     return {"ok": True, "repo": full, "number": number, "title": pr.title, "author": pr.user.login, "files": pr.changed_files, "size": r.size}
 
 
@@ -494,7 +494,7 @@ async def post_comment(run_id: str, u: dict = Depends(user)):
         state, desc = rubric.status_for(card["verdict"], card.get("tests", {}))
         try:
             gh.client(u["token"]).get_repo(run["repo"]).get_commit(pr.head.sha).create_status(
-                state, target_url=pr.html_url, description=desc, context="specguard/proof")
+                state, target_url=pr.html_url, description=desc, context="prproof/verify")
         except Exception:  # noqa: BLE001
             pass
     events.emit(run_id, "comment", "done", "Posted review to the PR", c.html_url, {"pr_number": pr_number, "pr_url": c.html_url})
@@ -527,7 +527,7 @@ async def stream(run_id: str, request: Request, u: dict = Depends(viewer)):
 
 
 # ---------- chat ----------
-ABOUT = """SpecGuard is an agent that builds features and reviews PRs against written specs (RFCs, standards, API contracts).
+ABOUT = """PRProof is an agent that builds features and reviews PRs against written specs (RFCs, standards, API contracts).
 Build: request -> spec clauses cited from the repo's specs/ folder (you approve) -> plan -> tests written FIRST and shown red ->
 implementation -> same tests green + existing tests still pass -> independent inspection (SubQ routes which clauses the change
 touches, generated tests prove violations) -> PR with an evidence table -> you approve or request changes (new round on the same PR).
@@ -548,7 +548,7 @@ async def chat(request: Request, u: dict = Depends(user)):
         except Exception as exc:  # noqa: BLE001
             ctx = f"\n(could not read selected repo: {exc})"
     history = "\n".join(f"{m['role']}: {m['text']}" for m in b.get("history", [])[-6:])
-    prompt = (f"You are the SpecGuard assistant inside its web app. Signed-in GitHub user: {u['login']}.\n{ABOUT}{ctx}\n\n"
+    prompt = (f"You are the PRProof assistant inside its web app. Signed-in GitHub user: {u['login']}.\n{ABOUT}{ctx}\n\n"
               f"Conversation so far:\n{history}\n\nUser: {b['message']}\n\nAnswer briefly and concretely. If they want to build or "
               f"review something, tell them which button to use (Create a feature / Read a repo / Explore).")
     text = await asyncio.to_thread(llm.gemini, prompt, llm.FLASH, "low")

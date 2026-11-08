@@ -110,7 +110,7 @@ def review_changes(work: Path, spec_text: str, all_clauses: list, diff: str, cha
 
 
 def render_comment(scope: dict, result: dict) -> str:
-    head = "🛡️ **SpecGuard**\n<!-- specguard -->\n\n" + scope["summary"] + "\n\n"
+    head = "🛡️ **PRProof**\n<!-- specguard -->\n\n" + scope["summary"] + "\n\n"
     if result["violations"]:
         out = head + f"**{len(result['violations'])} violation(s) proven by a failing test:**\n\n"
         for v in result["violations"]:
